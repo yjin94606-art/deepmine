@@ -18,6 +18,31 @@
     code: ['代码', 'code file', 'コード'],
     file: ['文件', 'file', 'ファイル']
   };
+  // Only recognized column labels enter a table introduction. Keep the same
+  // vocabulary when reading a CSV and translating a saved observation.
+  const columnNames=new Map();
+  const columns=[
+    ['date','日期','日付'],['month','月份','月'],['time','时间','時間'],['year','年份','年'],['city','城市','都市'],
+    ['region','区域','地域'],['location','地点','場所'],['country','国家','国'],['product','商品','商品'],
+    ['category','类别','分類'],['name','名称','名称'],['title','标题','題名'],['quantity','数量','数量'],
+    ['units','件数','件数'],['sales','销量','販売数'],['revenue','收入','収益'],['price','价格','価格'],
+    ['amount','金额','金額'],['temperature','温度','温度'],['humidity','湿度','湿度'],['count','数量','件数'],
+    ['score','分数','得点'],['budget','预算','予算'],['cost','成本','費用'],['result','结果','結果'],
+    ['task','任务','タスク'],['status','状态','状態'],['priority','优先级','優先度'],['deadline','截止日期','期限'],
+    ['distance','距离','距離'],['duration','时长','長さ'],['artist','艺术家','アーティスト'],['album','专辑','アルバム'],
+    ['genre','风格','ジャンル'],['species','物种','種'],['site','站点','観測地点'],['weight','重量','重量'],
+    ['ingredient','食材','食材'],['calories','热量','カロリー'],['population','人口','人口'],['latitude','纬度','緯度'],
+    ['longitude','经度','経度'],['level','等级','レベル'],['model','模型','モデル'],['tokens','Token 数','トークン数'],
+    ['unit','单位','単位'],['version','版本','版'],['timestamp','时间','時刻'],['country_code','国家代码','国コード'],
+    ['pier','码头','桟橋'],['departures','出发班次','出発便数'],['arrivals','到达班次','到着便数']
+  ];
+  for(const row of columns)for(const alias of row){
+    const key=alias.toLowerCase();
+    if(!columnNames.has(key))columnNames.set(key,row);
+  }
+  function tableColumn(name,language){
+    return columnNames.get(String(name).trim().toLowerCase())?.[language==='en'?0:language==='ja'?2:1]||'';
+  }
   const roles = [
     [/^readme(?:\.|$)/i, null, ['项目说明', 'Project guide', 'プロジェクトの案内'], ['想了解这个项目，可以从这份说明读起。', 'A place to start reading about the project.', 'このプロジェクトを知るとき、最初に読める案内です。']],
     [/^package\.json$/i, null, ['项目设置', 'Package settings', 'プロジェクトの設定'], ['这份清单写着项目要用哪些工具，也能列出启动项目的命令。', 'This file lists the tools the project uses and can include the commands that start it.', 'このファイルには、使うツールや起動用のコマンドをまとめておけます。']],
@@ -220,5 +245,5 @@
     }
     return {title, summary:addOthers(summary, files, kind, lang, title)};
   }
-  return Object.freeze({describe});
+  return Object.freeze({describe,tableColumn});
 });

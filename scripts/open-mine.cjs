@@ -6,10 +6,14 @@ const http = require('node:http');
 const {spawn} = require('node:child_process');
 const {createHash,randomUUID} = require('node:crypto');
 const {setTimeout:delay} = require('node:timers/promises');
-const {settingsDirectory} = require('./setup.cjs');
+const {settingsDirectory,readSettings,writeSettings} = require('./setup.cjs');
 const {projectIdentity} = require('./collector.cjs');
 const {canonical} = require('./source-adapters.cjs');
 const ROOT = path.resolve(__dirname,'..');
+const language = Intl.DateTimeFormat().resolvedOptions().locale.split('-')[0];
+function launcherText(english,chinese,japanese) {
+  return language === 'zh' ? chinese : language === 'ja' ? japanese : english;
+}
 
 function identity(dataDirectory,projectId,config={}) {
   const instance=createHash('sha256').update(JSON.stringify([
@@ -40,7 +44,7 @@ async function withStartupGate(base,work) {
     }
     try{return await work();}finally{await fs.unlink(file);}
   }
-  throw Error('深矿正在启动，请稍后再打开。Deepmine is still starting. Try again in a moment.');
+  throw Error(launcherText('Deepmine is still starting. Try again in a moment.','深矿正在启动，请稍后再打开。','起動中です。少し待ってからもう一度開いてください。'));
 }
 
 function isPort(port){return Number.isInteger(port)&&port>0&&port<=65535;}
@@ -76,7 +80,11 @@ async function rememberPort(file,port,projectId){
   finally{await fs.unlink(temporary).catch(error=>{if(error.code!=='ENOENT')throw error;});}
 }
 function launcherBase(directory){return path.join(directory,'launcher-'+identity(directory,null).instance.slice(0,16));}
-function rememberRunning(directory,port,projectId){return rememberPort(launcherBase(directory)+'.json',port,projectId);}
+async function rememberRunning(directory,port,projectId){
+  const base=launcherBase(directory);
+  if(projectId)await rememberPort(base+'-'+projectId+'.json',port,projectId);
+  await rememberPort(base+'.json',port,projectId);
+}
 // Connectors must verify the listener before sending an event or its local key.
 // The saved listener can differ from the requested launch port if it was busy.
 async function runningMinePort(directory,config,preferred,fallback=4173) {
@@ -87,7 +95,8 @@ async function runningMinePort(directory,config,preferred,fallback=4173) {
   if(preferred!==undefined)return await matchesService(preferred,expected)?preferred:null;
   const saved=await savedInstance(launcherBase(directory)+'.json');
   const last=saved && (!saved.projectId || saved.projectId===projectId) ? saved.port : null;
-  for(const candidate of new Set([last,fallback,4173])){
+  const mine=await savedInstance(launcherBase(directory)+'-'+projectId+'.json');
+  for(const candidate of new Set([last,mine?.port,fallback,4173])){
     if(await matchesService(candidate,expected))return candidate;
   }
   return null;
@@ -95,13 +104,13 @@ async function runningMinePort(directory,config,preferred,fallback=4173) {
 async function selectedProject(directory) {
   let config;
   try{config=JSON.parse(await fs.readFile(path.join(directory,'config.json'),'utf8'));}
-  catch(error){if(error.code==='ENOENT')return null;throw Error('无法读取现有配置，请检查 config.json。Cannot read the saved configuration.');}
-  if(typeof config?.projectPath!=='string'||!path.isAbsolute(config.projectPath))throw Error('项目配置缺少有效路径。Invalid saved project path.');
+  catch(error){if(error.code==='ENOENT')return null;throw Error(launcherText('Cannot read the saved configuration. Check config.json.','无法读取现有配置，请检查 config.json。','設定を読み込めません。config.json を確認してください。'));}
+  if(typeof config?.projectPath!=='string'||!path.isAbsolute(config.projectPath))throw Error(launcherText('Invalid saved project path.','项目配置缺少有效路径。','保存済みのプロジェクトのパスが無効です。'));
   try{return (await fs.stat(config.projectPath)).isDirectory()?{id:projectIdentity(config.projectPath).id,config}:null;}
   catch(error){if(error.code==='ENOENT'||error.code==='ENOTDIR')return null;throw error;}
 }
 
-async function openMine({env=process.env,port:explicitPort}={}) {
+async function openMine({env=process.env,port:explicitPort,chooseProject=false}={}) {
   const port=explicitPort??Number(env.PORT||4173);
   if(!Number.isInteger(port)||port<0||port>65535)throw Error('Port must be 0–65535.');
   const directory=settingsDirectory(ROOT,env);
@@ -113,45 +122,61 @@ async function openMine({env=process.env,port:explicitPort}={}) {
       server.close(resolve);server.closeAllConnections();
     })));
   }
-  async function ready(){
+  async function ready(picker=false,prepare){
     return withStartupGate(base,async()=>{
-      const project=await selectedProject(directory);
+      if(!prepare)return launch(picker);
+      const active=path.join(directory,'config.json'),before=await readSettings(active);
+      try{await prepare();return await launch(false);}
+      catch(error){
+        if(before)await writeSettings(active,before);
+        else await fs.unlink(active).catch(e=>{if(e.code!=='ENOENT')throw e;});
+        throw error;
+      }
+    });
+  }
+  async function launch(picker){
+      const project=picker?null:await selectedProject(directory);
       const expected=identity(directory,project?.id||null,project?.config);
-      const previous=await savedInstance(registry);
-      for(const candidate of new Set([previous?.port,port])){
-        if(await matchesService(candidate,expected))return {port:candidate,reused:true};
+      const previous=await savedInstance(picker?base+'-picker.json':registry);
+      const lastProject=project?await savedInstance(base+'-'+project.id+'.json'):null;
+      for(const candidate of new Set([lastProject?.port,previous?.port,port])){
+        if(await matchesService(candidate,expected)){
+          if(project && (previous?.projectId!==project.id || previous.port!==candidate))await rememberRunning(directory,candidate,project.id);
+          return {port:candidate,reused:true};
+        }
       }
       let running;
       if(project){
         const {start}=require('./server.cjs');
         // An origin stores the player's language, sound and other browser
         // preferences. Keep the last game port when reopening this project.
-        const last=previous?.projectId===project.id && isPort(previous.port)?previous.port:null;
+        const last=lastProject?.port || (previous?.projectId===project.id && isPort(previous.port)?previous.port:null);
         const choices=explicitPort===undefined && !env.PORT?[last,port,0]:[port,last,0];
         for(const target of new Set(choices)){
           if(target===null)continue;
-          try{running=await start({dataDirectory:directory,port:target,quiet:true});break;}
+          try{running=await start({dataDirectory:directory,port:target,quiet:true,
+            openPicker:async()=>localUrl((await ready(true)).port)});break;}
           catch(error){
             if(error.code==='EADDRINUSE' && target!==0)continue;
-            if(error.message.includes('already being synchronized'))throw Error('这个项目已在另一服务中运行。请关闭旧的深矿窗口再打开。Close the previous Deepmine service for this project, then reopen.');
+            if(error.message.includes('already being synchronized'))throw Error(launcherText('Close the previous Deepmine service for this project, then reopen.','请关闭这个项目之前的深矿启动窗口，再重新打开。','このプロジェクトの前の Deepmine を閉じてから開き直してください。'));
             throw error;
           }
         }
       }else{
         const {startWelcome}=require('./welcome.cjs');
-        running=await startWelcome({appRoot:ROOT,env,port:0,identity:expected,startGame:async()=>{
-          const game=await ready();
+        running=await startWelcome({appRoot:ROOT,env,port:0,identity:expected,reusable:picker,switchGame:async prepare=>{
+          const game=await ready(false,prepare);
           return {url:localUrl(game.port)};
         }});
       }
       owned.add(running.server);
       running.server.once('close',()=>owned.delete(running.server));
-      await rememberPort(registry,running.port,expected.projectId);
+      if(project)await rememberRunning(directory,running.port,project.id);
+      else await rememberPort(picker?base+'-picker.json':registry,running.port,null);
       return {port:running.port,reused:false};
-    });
   }
   try{
-    const result=await ready();
+    const result=await ready(chooseProject);
     return {...result,url:localUrl(result.port),close};
   }catch(error){await close();throw error;}
 }
@@ -186,8 +211,8 @@ async function main(args) {
     if(process.platform==='win32')process.once('SIGBREAK',instance.close);
   }
   console.log('Deepmine: '+instance.url);
-  if(!instance.reused)console.log('保留此窗口即可使用深矿，按 Ctrl+C 可退出。Keep this window open while using Deepmine.');
-  if(open)await openBrowser(instance.url).catch(()=>console.warn('请在浏览器打开上方地址。Open the address above in your browser.'));
+  if(!instance.reused)console.log(launcherText('Keep this window open while playing. Press Ctrl+C to quit.','使用深矿时请保留此窗口。按 Ctrl+C 可退出。','プレイ中はこのウィンドウを開いたままにしてください。Ctrl+C で終了します。'));
+  if(open)await openBrowser(instance.url).catch(()=>console.warn(launcherText('Open the address above in your browser.','请在浏览器打开上方地址。','上記のアドレスをブラウザーで開いてください。')));
 }
 module.exports={openMine,identity,rememberRunning,runningMinePort};
 if(require.main===module)main(process.argv.slice(2)).catch(error=>{console.error(error.message);process.exitCode=1;});

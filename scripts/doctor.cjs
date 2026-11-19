@@ -63,7 +63,7 @@ async function diagnose(config,{port=4173,env=process.env,home,request=fetch}={}
       checks.push({label:'API capture',status:(info.capture?.enabledProviders||[]).join(', ')||'disabled'});
       checks.push({label:'History',status:info.capabilities.persistentHistory?'enabled':'unavailable'});
     }
-  } catch {checks.push({label:'Local server',status:'unreachable; run npm start'});}
+  } catch {checks.push({label:'Local server',status:'unreachable. Run npm run open to reopen this mine.'});}
   return checks;
 }
 async function main(args=process.argv.slice(2)) {
@@ -74,7 +74,7 @@ async function main(args=process.argv.slice(2)) {
   const directory=settingsDirectory(root);
   let config;
   try {config=JSON.parse(await fs.readFile(path.join(directory,'config.json'),'utf8'));}
-  catch(e) {if(e.code!=='ENOENT')throw Error('Configuration is unreadable.');console.log('Run npm run connect:codex first.');process.exitCode=1;return;}
+  catch(e) {if(e.code!=='ENOENT')throw Error('Configuration is unreadable.');console.log('Ready for your first dig. Run npm run open to try the sample mine or choose your project.');return;}
   const port=await require('./open-mine.cjs').runningMinePort(directory,config,args[1]===undefined?undefined:Number(args[1]),Number(process.env.PORT));
   const checks=await diagnose(config,{port});
   for(const check of checks)console.log(check.label+': '+check.status);

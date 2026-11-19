@@ -11,6 +11,7 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import release
 import windows_bundle
+import windows_setup
 
 
 class ReleaseAssetsTest(unittest.TestCase):
@@ -50,13 +51,20 @@ class ReleaseAssetsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "entry"):
             release.sources()
 
-    def test_checksums_cover_exactly_the_two_matching_packages(self):
+    def test_checksums_cover_the_installer_and_both_matching_packages(self):
         self.windows()
+        portable = (self.out / release.asset_name("windows-x64")).read_bytes()
+        setup = self.out / windows_setup.name()
+        setup.write_bytes(b"MZfixture" + portable)
         release.write_checksums(self.out)
         release.write_checksums(self.out)
         expected = "".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n"
-                           for p in sorted(self.out.glob("*.zip")))
+                           for p in sorted([*self.out.glob("*.zip"), setup]))
         self.assertEqual((self.out / "SHA256SUMS.txt").read_bytes(), expected.encode())
+        setup.write_bytes(b"MZfixture" + portable[:-2] + b"XX")
+        with self.assertRaisesRegex(ValueError, "verified portable ZIP"):
+            release.write_checksums(self.out)
+        setup.write_bytes(b"MZfixture" + portable)
         self.windows(b'{"version":"other"}')
         with self.assertRaisesRegex(ValueError, "different copies"):
             release.write_checksums(self.out)

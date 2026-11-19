@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { defaults, canonical, listClaude } = require('./source-adapters.cjs');
 const { discoverCodex, connect } = require('./connect-codex.cjs');
-const { settingsDirectory } = require('./setup.cjs');
+const { settingsDirectory, savedProjectSettings, savedProjectPaths, selectSettings, readSettings } = require('./setup.cjs');
 const {projectIdentity}=require('./collector.cjs');
 const {saveNarrationEnabled}=require('./work-narration-api.cjs');
 
@@ -137,8 +137,9 @@ async function childFolders(folder,signal) {
 }
 
 async function startWelcome({ port = 0, appRoot = path.resolve(__dirname, '..'), env = process.env,
-  home = os.homedir(), startGame, identity } = {}) {
-  if (typeof startGame !== 'function') throw TypeError('The welcome page requires a local game launcher.');
+  home = os.homedir(), startGame, switchGame, reusable=false, identity } = {}) {
+  if (!switchGame && typeof startGame !== 'function') throw TypeError('The welcome page requires a local game launcher.');
+  const directory=settingsDirectory(appRoot,env);
   let previous;
   try { previous = JSON.parse(await fs.readFile(path.join(settingsDirectory(appRoot, env), 'config.json'), 'utf8')); }
   catch (error) { if (error.code !== 'ENOENT') throw Error('Existing settings could not be read.'); }
@@ -162,24 +163,39 @@ async function startWelcome({ port = 0, appRoot = path.resolve(__dirname, '..'),
         combined.set(key,entry);
       }
     }
-    const sorted = [...combined.values()].sort((a,b) => Date.parse(b.startedAt)-Date.parse(a.startedAt) || a.projectPath.localeCompare(b.projectPath));
+    for (const projectPath of await savedProjectPaths(directory)) {
+      if (!(await fs.stat(projectPath).catch(()=>null))?.isDirectory()) continue;
+      const key=canonical(projectPath);
+      const entry=combined.get(key) || {projectPath,sessions:0,sources:[],startedAt:null};
+      entry.saved=true;
+      combined.set(key,entry);
+    }
+    const sorted = [...combined.values()].sort((a,b) => Number(!!b.saved)-Number(!!a.saved) || (Date.parse(b.startedAt)||0)-(Date.parse(a.startedAt)||0) || a.projectPath.localeCompare(b.projectPath));
     const entries = sorted.map(project => {
       const id = crypto.createHmac('sha256', salt).update(canonical(project.projectPath)).digest('hex');
       return { id, name: path.basename(project.projectPath) || project.projectPath, path: project.projectPath,
-        sessions: project.sessions, startedAt: project.startedAt, sources: project.sources };
+        sessions: project.sessions, startedAt: project.startedAt, sources: project.sources, saved:project.saved===true };
     });
     choices = new Map(entries.map(entry => [entry.id, entry.path]));
     return { projects: entries, partial: codex.partial || claude.partial, windowsDrives:process.platform==='win32' };
   }
 
   async function launch(project, memories,narration,includeProcess) {
-    await connect(['--project', project, '--codex-root', codexRoot, '--claude-root', claudeRoot, '--setup-only', memories ? '--memories' : '--no-memories'],
-      { appRoot, env, home, interactive: false, write: () => {} });
-    if(narration!==undefined)await saveNarrationEnabled(settingsDirectory(appRoot,env),projectIdentity(project).id,narration,includeProcess);
-    const started = await startGame();
+    async function configureChoice(){
+      const active=await readSettings(path.join(directory,'config.json'));
+      const saved=await savedProjectSettings(directory,project,active);
+      if(saved){await selectSettings(directory,saved);return;}
+      await connect(['--project', project, '--codex-root', codexRoot, '--claude-root', claudeRoot, '--setup-only', memories ? '--memories' : '--no-memories'],
+        { appRoot, env, home, interactive: false, write: () => {} });
+      if(narration!==undefined)await saveNarrationEnabled(directory,projectIdentity(project).id,narration,includeProcess);
+    }
+    let started;
+    if(switchGame)started=await switchGame(configureChoice);
+    else{await configureChoice();started=await startGame();}
     const game = new URL(typeof started === 'string' ? started : started.url);
     if (game.protocol !== 'http:' || game.hostname !== '127.0.0.1' || !game.port || game.username || game.password)
       throw Error('Invalid local game address.');
+    if(reusable)return game.href;
     destination = game.href;
     closeTimer = setTimeout(() => server.close(), 12000);
     closeTimer.unref();
@@ -250,7 +266,11 @@ async function startWelcome({ port = 0, appRoot = path.resolve(__dirname, '..'),
             return launch(project, choice.memories,choice.narration,choice.includeProcess===true);
           })()};
         }
-        try { return json(200, {url: await opening.promise}); }
+        try {
+          const url=await opening.promise;
+          if(reusable)opening=null;
+          return json(200, {url});
+        }
         catch (error) {
           opening = null;
           return json(error.message === 'missing-folder' ? 400 : 503,

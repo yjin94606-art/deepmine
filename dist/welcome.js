@@ -2,7 +2,7 @@
   'use strict';
   const words = {
     'zh-CN': {
-      tryMine:'先试玩一次挖掘',
+      tryMine:'先试玩一次挖掘',resumeMine:'继续这个矿坑',
       heading: '选择你的项目', intro: '选一个工作文件夹，把这里的 AI 用量和作品留在矿坑里。',
       project: '最近用过的项目', rescan: '重新查找', other: '用其他文件夹',
       browse:'浏览文件夹', home:'个人文件夹', parent:'上一级', useFolder:'选这个文件夹', reading:'正在读取文件夹…',
@@ -19,7 +19,7 @@
       failed: '矿坑暂时无法启动。请确认项目可读取、存档目录可写，然后再点一次。', network: '与本机服务的连接中断，请重新打开深矿。'
     },
     en: {
-      tryMine:'Try a sample mine',
+      tryMine:'Try a sample mine',resumeMine:'Resume this mine',
       heading: 'Choose your project', intro: 'Choose a work folder to see its AI usage and the things you create in your mine.',
       project: 'Recent projects', rescan: 'Scan again', other: 'Use a different folder',
       browse:'Browse folders', home:'Home folder', parent:'Up one level', useFolder:'Use this folder', reading:'Reading folders…',
@@ -36,7 +36,7 @@
       failed: 'The mine could not start. Check that your project is readable and the save folder is writable, then try again.', network: 'The local service disconnected. Reopen Deepmine.'
     },
     ja: {
-      tryMine:'サンプルの坑道で遊ぶ',
+      tryMine:'サンプルの坑道で遊ぶ',resumeMine:'この坑道を再開',
       heading: 'プロジェクトを選ぶ', intro: '作業フォルダーを選ぶと、そこでの AI 使用量や作った作品が坑道に現れます。',
       project: '最近使ったプロジェクト', rescan: '再検索', other: '別のフォルダーを使う',
       browse:'フォルダーを参照', home:'ホーム', parent:'上の階層へ', useFolder:'このフォルダーを選ぶ', reading:'フォルダーを読み込み中…',
@@ -84,8 +84,10 @@
     el('useFolder').disabled = busy || reading || !directoryView;
     el('openDrive').disabled = busy || reading || !driveLetter.value;
     submit.disabled = busy || !picker.hidden || !usePath && !select.value;
-    submit.textContent = busy ? copy.connecting : copy.enter;
     const selected = !usePath && projects.find(p => p.id === select.value);
+    const saved=selected?.saved || (usePath && projects.some(p=>p.saved && p.path===typedPath()));
+    el('writing').hidden=Boolean(saved);
+    submit.textContent = busy ? copy.connecting : saved ? copy.resumeMine : copy.enter;
     el('directory').textContent = selected ? [...(selected.sources||[]),selected.path].join(' · ') : '';
     select.hidden = !scanning && !projects.length;
   }

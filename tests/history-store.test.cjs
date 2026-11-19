@@ -15,6 +15,28 @@ test('the UTC survey counts confirmed positive manual progress across restarts a
   clock=new Date('2026-11-19T00:00:01Z');assert.deepEqual(await history.getSurvey(),{day:'2026-11-19',meters:0,stamps:[day]});
 });
 
+test('an older active save resting on a real find restores the hold once; an unconfirmed find survives midnight',async t=>{
+  const directory=fixture(t);let clock=new Date('2026-11-18T11:00:00Z');
+  const options={directory,projectId,now:()=>clock};
+  let store=createHistory(options);
+  const initial=await store.reconcile(snapshot());
+  const [first]=require('../dist/work-findings.js').build(initial);
+  await store.command({action:'start'});
+  await store.command({action:'progress',depth:first.depth});
+  const old=JSON.parse(fs.readFileSync(store.filename,'utf8'));
+  delete old.mining.waitingFind;delete old.snapshot.mining.waitingFind;
+  fs.writeFileSync(store.filename,JSON.stringify(old));
+  store=createHistory(options);
+  assert.deepEqual((await store.reconcile(snapshot())).mining.waitingFind.ids,[first.id]);
+  clock=new Date('2026-11-19T10:00:00Z');
+  const later=await store.reconcile(snapshot('2026-11-19'));
+  assert.equal(later.mining.waitingFind.ids[0],first.id);
+  assert.equal(later.mining.excavatedDepth,first.depth);
+  await store.command({action:'acknowledge',id:first.id});
+  store=createHistory(options);
+  assert.equal((await store.reconcile(snapshot('2026-11-19'))).mining.waitingFind,null);
+});
+
 test('a saved generic function count upgrades in place when the same file can now explain its purpose',async t=>{
   const history=createHistory({directory:fixture(t),projectId}),fresh=snapshot();
   const file={id:'file:route',projectId,sourceId:'local-files',timestamp:'2026-11-18T02:00:00.000Z',type:'code',
@@ -150,7 +172,7 @@ test('upgrade keeps old layers and revealed positions, then adds an interval for
   assert.ok(extra.depth>upgraded.mining.earnedDepth+9);
   assert.equal(next.mining.radio.meters,upgraded.mining.earnedDepth-original.depth);
 });
-test('start/progress are idempotent and bounded by earned records; pause cannot mint depth',async t=>{const history=createHistory({directory:fixture(t),projectId,now:()=>new Date('2026-11-18T11:00:00Z')});const value=await history.reconcile(snapshot()),earned=value.mining.earnedDepth;assert.ok(earned>0);assert.equal(value.mining.excavatedDepth,0);await history.command({action:'start'});await history.command({action:'start'});assert.equal((await history.command({action:'progress',depth:5})).excavatedDepth,5);assert.equal((await history.command({action:'progress',depth:2})).excavatedDepth,5);await history.command({action:'pause'});assert.equal((await history.command({action:'progress',depth:10000})).excavatedDepth,5);await history.command({action:'start'});const final=await history.command({action:'progress',depth:10000});assert.equal(final.excavatedDepth,earned);assert.equal(final.earnedDepth,earned);assert.equal(final.pendingDepth,0);});
+test('start/progress are idempotent and bounded by earned records; pause cannot mint depth',async t=>{const history=createHistory({directory:fixture(t),projectId,now:()=>new Date('2026-11-18T11:00:00Z')});const value=await history.reconcile(snapshot()),earned=value.mining.earnedDepth;assert.ok(earned>0);assert.equal(value.mining.excavatedDepth,0);await history.command({action:'start'});await history.command({action:'start'});assert.equal((await history.command({action:'progress',depth:5})).excavatedDepth,5);assert.equal((await history.command({action:'progress',depth:2})).excavatedDepth,5);await history.command({action:'pause'});assert.equal((await history.command({action:'progress',depth:10000})).excavatedDepth,5);await history.command({action:'start'});let final=await history.command({action:'progress',depth:10000});for(let i=0;i<12 && final.waitingFind;i++){await history.command({action:'acknowledge',id:final.waitingFind.ids[0]});final=await history.command({action:'progress',depth:10000});}assert.equal(final.excavatedDepth,earned);assert.equal(final.earnedDepth,earned);assert.equal(final.pendingDepth,0);});
 test('refresh time alone does not rewrite journal or increment revision, while source changes persist',async t=>{const history=createHistory({directory:fixture(t),projectId}),s=snapshot();const first=await history.reconcile(s),bytes=fs.readFileSync(history.filename,'utf8');s.collectedAt='2026-11-18T11:00:00Z';const next=await history.reconcile(s);assert.equal(next.history.revision,first.history.revision);assert.equal(fs.readFileSync(history.filename,'utf8'),bytes);assert.equal(next.collectedAt,new Date(s.collectedAt).toISOString());s.sources.codex.notes.push('New source coverage diagnostic');await history.reconcile(s);assert.notEqual(fs.readFileSync(history.filename,'utf8'),bytes);});
 test('past work settles across local midnight and after a stopped process restarts without earning extra depth',async t=>{const directory=fixture(t);let clock=new Date('2026-11-18T11:00:00Z');let history=createHistory({directory,projectId,now:()=>clock});const first=await history.reconcile(snapshot());await history.command({action:'start'});await history.command({action:'progress',depth:3});clock=new Date('2026-11-18T16:01:00Z');history=createHistory({directory,projectId,now:()=>clock});const settled=await history.command({action:'pause'});assert.equal(settled.earnedDepth,first.mining.earnedDepth);assert.equal(settled.excavatedDepth,first.mining.earnedDepth);assert.equal(settled.lastSettledDate,'2026-11-18');});
 test('persistent history retains records older than 14 days and marks source outages as retained observations',async t=>{const history=createHistory({directory:fixture(t),projectId});await history.reconcile(snapshot('2026-10-01'));let latest=await history.reconcile(snapshot());assert.ok(latest.days.some(day=>day.date==='2026-10-01'));const offline=clone(latest);offline.sources.git.status='missing';offline.sources.git.head=null;offline.sources.codex.status='missing';offline.days=offline.days.map(day=>({...day,evidence:[],usage:unknown()}));latest=await history.reconcile(offline);assert.ok(latest.days.some(day=>day.evidence.length));assert.ok(latest.warnings.some(note=>note.includes('上次观测')));assert.equal(latest.sources.git.status,'missing');});

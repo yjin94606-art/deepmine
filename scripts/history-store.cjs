@@ -99,8 +99,18 @@ function createHistory({ directory, projectId, timezone = 'Asia/Shanghai', now =
     await fs.rename(temporary,filename);
   }
   function serialize(operation) { const run = queue.then(operation); queue = run.catch(()=>{}); return run; }
-  function mining(snapshot, previousSnapshot) {
-    const projection = C.project(snapshot), today = C.today(snapshot.collectedAt,timezone);
+  function discoveryAt(snapshot, projection, date, from, to, atFront=false) {
+    const placements=snapshot.days.find(day=>day.date===date)?.placements;
+    const layer=projection.days.find(day=>day.date===date);
+    if(!placements || !layer || layer.depthEnd<=layer.depthStart)return null;
+    const stops=Object.entries(placements).map(([key,offset])=>({id:projectId+'/'+date+'/'+key,depth:layer.depthStart+offset}))
+      .filter(item=>atFront ? Math.abs(item.depth-from)<1e-7 : item.depth>from && item.depth<=to)
+      .sort((a,b)=>a.depth-b.depth || a.id.localeCompare(b.id));
+    if(!stops.length)return null;
+    return {date,depth:stops[0].depth,ids:stops.filter(item=>item.depth===stops[0].depth).map(item=>item.id)};
+  }
+  function mining(snapshot, previousSnapshot, projection=C.project(snapshot)) {
+    const today = C.today(snapshot.collectedAt,timezone);
     const settled = projection.days.filter(day=>day.date<today).at(-1)?.depthEnd || 0;
     const old = state?.mining || {};
     let front = Number(old.excavatedDepth) || 0;
@@ -108,9 +118,23 @@ function createHistory({ directory, projectId, timezone = 'Asia/Shanghai', now =
       const previousSettled = C.project(previousSnapshot).days.filter(day => day.date < today).at(-1)?.depthEnd || 0;
       front = settled + Math.max(0, front - previousSettled);
     }
-    const excavatedDepth = Math.min(projection.depth,Math.max(settled,front));
+    let excavatedDepth = Math.min(projection.depth,Math.max(settled,front));
+    let waitingFind = old.waitingFind||null;
+    if(waitingFind){
+      const layer=projection.days.find(day=>day.date===waitingFind.date);
+      const placements=snapshot.days.find(day=>day.date===waitingFind.date)?.placements||{};
+      const ids=waitingFind.ids.filter(id=>Object.hasOwn(placements,id.split('/').slice(-2).join('/')));
+      if(layer && ids.length){
+        excavatedDepth=layer.depthStart+placements[ids[0].split('/').slice(-2).join('/')];
+        waitingFind={date:waitingFind.date,depth:excavatedDepth,ids};
+      }else waitingFind=null;
+    }else if(old.active && !Object.hasOwn(old,'waitingFind')){
+      // Old installations saved the stop only in browser storage. Recover a
+      // still-active drill resting exactly on a real, pinned discovery once.
+      waitingFind=discoveryAt(snapshot,projection,today,excavatedDepth,excavatedDepth,true);
+    }
     const sameDay = !previousSnapshot || C.today(previousSnapshot.collectedAt, timezone) === today;
-    return { earnedDepth:projection.depth, excavatedDepth, pendingDepth:Math.max(0,projection.depth-excavatedDepth), active:Boolean(sameDay && old.active && excavatedDepth<projection.depth), lastSettledDate:projection.days.filter(day=>day.date<today).at(-1)?.date || null, revision:state?.revision||0 };
+    return { earnedDepth:projection.depth, excavatedDepth, pendingDepth:Math.max(0,projection.depth-excavatedDepth), active:Boolean(sameDay && old.active && excavatedDepth<projection.depth), lastSettledDate:projection.days.filter(day=>day.date<today).at(-1)?.date || null, waitingFind, revision:old.revision||0 };
   }
   function outputVersions() {
     return serialize(async () => {
@@ -213,7 +237,8 @@ function createHistory({ directory, projectId, timezone = 'Asia/Shanghai', now =
       state.survey=survey;
       state.mining.radio = radioProgress(radio);
       state.snapshot.history.revision=state.revision;
-      state.mining.revision=state.revision; state.snapshot.mining=state.mining;
+      if(changed || JSON.stringify(previousState?.mining)!==JSON.stringify(state.mining))state.mining.revision++;
+      state.snapshot.mining=state.mining;
       try {
         state.snapshot=C.validateSnapshot(state.snapshot);
         if(persistedContent(state)!==before)await save();
@@ -225,24 +250,37 @@ function createHistory({ directory, projectId, timezone = 'Asia/Shanghai', now =
       return visible;
     });
   }
-  async function command({action,depth}={}) {
+  async function command({action,depth,id}={}) {
     return serialize(async()=>{
       await load(); if(!state)throw new Error('No synchronized records yet');
-      if (!['start','pause','progress'].includes(action)) throw new TypeError('Unknown mining action');
+      if (!['start','pause','progress','acknowledge'].includes(action)) throw new TypeError('Unknown mining action');
       if (action === 'progress' && (!Number.isFinite(depth) || depth < 0)) throw new TypeError('Invalid excavation progress');
+      if (action === 'acknowledge' && (typeof id!=='string' || !id.length || id.length>512))throw new TypeError('Invalid discovery ID');
       const previousState = state, before=persistedContent(state);
       state = {...state, snapshot:{...state.snapshot}};
       const clock=new Date(now());
       if(clock.getTime()>=Date.parse(state.snapshot.collectedAt))state.snapshot.collectedAt=clock.toISOString();
-      state.mining=mining(state.snapshot);
+      const projection=C.project(state.snapshot);
+      state.mining=mining(state.snapshot,undefined,projection);
       const currentDate = C.today(state.snapshot.collectedAt, timezone);
       state.radio = {...radioForDay(state.radio, currentDate)};
       const beforeDepth = state.mining.excavatedDepth;
       let stamp=0;
       if(action==='start')state.mining.active=state.mining.pendingDepth>0;
       else if(action==='pause')state.mining.active=false;
+      else if(action==='acknowledge'){
+        const waiting=state.mining.waitingFind;
+        if(waiting?.ids[0]===id)state.mining.waitingFind=waiting.ids.length>1?{...waiting,ids:waiting.ids.slice(1)}:null;
+      }
       else if(action==='progress'){
-        if(state.mining.active){state.mining.excavatedDepth=Math.min(state.mining.earnedDepth,Math.max(state.mining.excavatedDepth,depth));state.mining.pendingDepth=Math.max(0,state.mining.earnedDepth-state.mining.excavatedDepth);if(!state.mining.pendingDepth)state.mining.active=false;}
+        if(state.mining.active && !state.mining.waitingFind){
+          const target=Math.min(state.mining.earnedDepth,Math.max(beforeDepth,depth));
+          const waiting=discoveryAt(state.snapshot,projection,currentDate,beforeDepth,target);
+          state.mining.waitingFind=waiting;
+          state.mining.excavatedDepth=waiting?.depth??target;
+          state.mining.pendingDepth=state.mining.earnedDepth-state.mining.excavatedDepth;
+          if(!state.mining.pendingDepth)state.mining.active=false;
+        }
       }
       if (action === 'progress' && state.mining.excavatedDepth>beforeDepth) {
         const advanced=state.mining.excavatedDepth-beforeDepth;
@@ -253,6 +291,7 @@ function createHistory({ directory, projectId, timezone = 'Asia/Shanghai', now =
         for(const [i,mark] of [25,100,250].entries())if(prior<mark && prior+advanced>=mark)stamp=i+1;
       }
       state.mining.radio = radioProgress(state.radio);
+      if(JSON.stringify(previousState.mining)!==JSON.stringify(state.mining))state.mining.revision++;
       state.snapshot.mining=state.mining;
       try { if(persistedContent(state)!==before)await save(); }
       catch (error) { state = previousState; throw error; }
@@ -298,6 +337,7 @@ function createHistory({ directory, projectId, timezone = 'Asia/Shanghai', now =
       return {...today,stamps};
     });
   }
-  return {reconcile,command,getRadio,getSurvey,claimNews,outputVersions,filename};
+  function getMining(){return serialize(async()=>{await load();return state?clone(state.mining):null;});}
+  return {reconcile,command,getMining,getRadio,getSurvey,claimNews,outputVersions,filename};
 }
 module.exports={createHistory,unknown};

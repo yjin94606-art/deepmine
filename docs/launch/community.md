@@ -1,4 +1,4 @@
-# Deepmine 1.0 launch copy
+# Deepmine 1.1 launch copy
 
 ## Repository description
 
@@ -12,13 +12,13 @@ At the end of a day with a coding assistant, I wanted to see what all those toke
 
 My favorite part is coming back a few days later. I can scroll up the shaft to Tuesday and find that drawing again, even if I've forgotten its filename.
 
-Deepmine 1.0 runs on your computer. Pick a Codex or Claude Code project to try it with your own work, or open the sample mine and dig up a greenhouse botanist with a very particular hair clip. The sample needs no account or API key. [Download Deepmine](https://github.com/yjin94606-art/deepmine/releases/latest)
+Deepmine 1.1 runs on your computer. Pick a Codex or Claude Code project to try it with your own work, or open the sample mine and dig up a greenhouse botanist with a very particular hair clip. The sample needs no account or API key. [Download Deepmine](https://github.com/yjin94606-art/deepmine/releases/latest)
 
 I'll keep working on the feel of the drill, support for more workflows, and finds that look like the things you actually made. What would you want to recognize the moment it came out of the rock? [Tell me on GitHub](https://github.com/yjin94606-art/deepmine/issues)
 
 ## Short post
 
-What did you make with today's tokens? Deepmine lets you dig it up. Your AI project becomes a pixel-art mine you can revisit by date. The first sample find is a botanist with a stubborn little hair clip. [Play the sample](https://github.com/yjin94606-art/deepmine/releases/latest)
+What did you make with today's tokens? Deepmine lets you dig it up. Your AI project becomes a pixel-art mine you can revisit by date. The first sample find is a botanist with a stubborn little hair clip. [Play the sample](https://yjin94606-art.github.io/deepmine/)
 
 ## Captions
 

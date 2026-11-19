@@ -3,7 +3,9 @@
   const C=window.EvidenceCore,F=window.WorkFindings,I=window.DeepmineI18n,$=id=>document.getElementById(id),esc=C.escapeHTML;
   const EPS=.001,LOCALE_KEY='deepmine.locale.v1';
   const PACE_KEY='deepmine.dig-pace.v1';
-  const sampleVisit=location.pathname==='/try';
+  const hostedSample=document.documentElement.hasAttribute('data-hosted-sample');
+  const sampleVisit=hostedSample || location.pathname==='/try';
+  const projectSelection=hostedSample?'https://github.com/yjin94606-art/deepmine/releases/latest':sampleVisit?'/':'/projects';
   let timelineKey='',timelineSelected='';
   let override=null;try{override=I.normalize(localStorage.getItem(LOCALE_KEY));}catch(_){}
   let locale=I.resolve({override,languages:navigator.languages||[navigator.language]}),snapshot=null,projection=null,findings=[],mode='live',scene=null;
@@ -134,11 +136,12 @@
       }
     }
     closeDialog('detailDialog');
+    if($('depthBoard').open)$('depthBoard').close();
     if(scene.focusArtifact?.(target.id) && mode==='live'){
       const url=new URL(location.href), selected=appearance(target).member;
       url.searchParams.set('view','mine');
       url.searchParams.set('find',target.id);
-      if(selected)url.searchParams.set('workVersion',memberKey(selected));
+      if(selected)url.searchParams.set('workVersion',wallLinkKey(selected));
       else url.searchParams.delete('workVersion');
       history.replaceState(null,'',url);
     }
@@ -158,41 +161,26 @@
     newsLoading=false; newsClaiming=false; lastClaimAt=-Infinity; newsLoadedKey='';
     news={date:'',items:[],status:'empty',slots:0,meters:0}; renderNews();
   }
-  function liveStageKey(){return stageStorageKey+'.live.'+snapshot.project.id;}
-  function saveStage(finishedId) {
-    if(sampleVisit)return;
+  function saveStage() {
+    if(sampleVisit||mode==='live')return;
     const tabKey=stageStorageKey+'.'+mode;
     const value=stageCurrent?JSON.stringify({project:snapshot.project.id,date:currentDate(),ids:[...stageCurrent.ids,...stageQueue.map(q=>q.id)],depth:stageCurrent.depth}):null;
-    if(mode==='live'){
-      try{
-        const key=liveStageKey();
-        const stored=JSON.parse(localStorage.getItem(key));
-        if(value){
-          if(!stored||stored.date!==currentDate()||stored.depth<=stageCurrent.depth+EPS)localStorage.setItem(key,value);
-        }else if(stored?.ids?.[0]===finishedId)localStorage.removeItem(key);
-        sessionStorage.removeItem(tabKey);
-        return;
-      }catch{ /* Fall back to this tab when persistent storage is unavailable. */ }
-    }
     try {
       if(value)sessionStorage.setItem(tabKey,value);
       else sessionStorage.removeItem(tabKey);
     } catch { /* A tab with storage disabled still pauses and saves normal progress. */ }
   }
   function restoreStage() {
-    if(sampleVisit)return;
+    if(sampleVisit||mode==='live')return;
     let saved;
-    if(mode==='live')try{saved=JSON.parse(localStorage.getItem(liveStageKey()));}catch{}
-    if(!saved)try{saved=JSON.parse(sessionStorage.getItem(stageStorageKey+'.'+mode));}catch{return;}
+    try{saved=JSON.parse(sessionStorage.getItem(stageStorageKey+'.'+mode));}catch{return;}
     if (!saved || saved.project!==snapshot.project.id || saved.date!==currentDate() || !Number.isFinite(saved.depth) || !Array.isArray(saved.ids)) return;
-    if(mode==='live' && saved.depth+.02<mining.excavatedDepth)return;
     const ids=[...new Set(saved.ids)].filter(id=>{const item=findItem(id);return item && item.date===saved.date && Math.abs(item.depth-saved.depth)<.01;});
     if (!ids.length) return;
     const scope=mode+':'+snapshot.project.id;
     stageCurrent={kind:'finding',ids:[ids[0]],depth:saved.depth,elapsed:900,breakMs:0};
     stageQueue=ids.slice(1).map(id=>({id,scope}));
     ids.forEach(id=>revealSeen.add(id));
-    if(mode==='live')saveStage();
     if (mode==='demo') {
       const delta=Math.max(0,saved.depth-mining.excavatedDepth);
       mining.excavatedDepth=Math.min(mining.earnedDepth,saved.depth);
@@ -225,6 +213,12 @@
   function reveal(event){
     const item=findItem(event.id);
     if (!mining.active || !item || item.pending || item.depth<=revealFloor+EPS || revealSeen.has(item.id) || visual.mode==='inspect') return;
+    if(mode==='live'){
+      scene.setDiscoveryHold(true);
+      queuedDepth=Math.max(queuedDepth,item.depth);
+      scheduleProgress(true);
+      return;
+    }
     revealSeen.add(item.id); stageQueue.push({id:item.id,scope:activeScope});
     scene.setDiscoveryHold(true);
     sound?.play({type:'artifact'}); pumpStage(); saveStage();
@@ -263,6 +257,10 @@
     const caption=record.querySelector('p');
     caption.textContent=prose.text;
     caption.hidden=!prose.text;
+    const pages=$('stageWorks'),members=gallery.members(item,snapshot);
+    pages.hidden=members.length<2;
+    const pageKey=locale+':'+members.length+':'+members.indexOf(member);
+    if(pages.dataset.page!==pageKey){pages.innerHTML=pages.hidden?'':workPageButtons(members,member);pages.dataset.page=pageKey;}
     $('stageContinue').textContent=t(stageQueue.length?'takeNextFind':mining.earnedDepth-stageCurrent.depth>EPS?'continueDig':'findingEnd');
     drawStage(motionPreference.matches?900:Math.max(0,stageCurrent.elapsed-stageCurrent.breakMs));
   }
@@ -360,15 +358,46 @@
     }
     renderHUD();
   }
-  function continueDig(){ if($('discoveryStage').open && !stageBlocked()) finishStage(); }
-
-  window.addEventListener('storage',event=>{
-    if(!stageCurrent||mode!=='live'||!snapshot||event.key!==liveStageKey()||!event.oldValue)return;
+  let acknowledging=false,checkingHold=false;
+  async function continueDig(){
+    if(!$('discoveryStage').open || stageBlocked() || !stageCurrent)return;
+    if(mode==='demo'){finishStage();return;}
+    if(acknowledging)return;
+    acknowledging=true;
     try{
-      const prior=JSON.parse(event.oldValue),next=JSON.parse(event.newValue);
-      if(prior.ids?.[0]===stageCurrent.ids[0] && next?.ids?.[0]!==stageCurrent.ids[0])finishStage(false);
-    }catch{}
-  });
+      const result=await requestMining({action:'acknowledge',id:stageCurrent.ids[0]});
+      if(result)applyMining(result);
+    }catch{toast('saveFailed');}finally{acknowledging=false;}
+  }
+  function syncLiveStage(restoring=false){
+    if(mode!=='live')return;
+    const hold=mining.waitingFind;
+    if(!hold){
+      if(stageCurrent){stageQueue=[];finishStage(false);}
+      return;
+    }
+    const item=findItem(hold.ids[0]);
+    if(!item){scene.setDiscoveryHold(true);return;}
+    const changed=stageCurrent?.ids[0]!==item.id;
+    stageQueue=hold.ids.slice(1).map(id=>({id,scope:'live:'+snapshot.project.id}));
+    if(changed){
+      releaseNarration('stage');
+      stageCurrent={kind:'finding',ids:[item.id],depth:hold.depth,elapsed:restoring?900:0,breakMs:restoring||motionPreference.matches?0:700};
+      revealSeen.add(item.id);
+      if(!restoring)sound?.play({type:'artifact'});
+      hideHover();renderStage();
+    }else stageCurrent.depth=hold.depth;
+    scene.setDiscoveryHold(true);syncPresentation();
+  }
+  async function checkSharedHold(){
+    if(checkingHold || mode!=='live' || !mining.waitingFind || document.hidden || pageLeaving)return;
+    checkingHold=true;
+    const epoch=generation;
+    try{
+      const response=await fetch('/api/mining',{cache:'no-store',headers:{'X-Deepmine-Client':'mining'},signal:AbortSignal.timeout(5000)});
+      if(response.ok){const result=await response.json();if(epoch===generation && result.mining?.revision>mining.revision)applyMining(result.mining);}
+    }catch{}finally{checkingHold=false;}
+  }
 
   const currentDate=()=>snapshot?.history?.endDate||C.today(snapshot?.collectedAt||new Date(),snapshot?.timezone);
   function dateText(date,full=false){
@@ -380,14 +409,20 @@
   function timeText(value){if(!Number.isFinite(Date.parse(value)))return'—';return new Intl.DateTimeFormat(locale,{timeZone:snapshot?.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone,dateStyle:'medium',timeStyle:'short'}).format(new Date(value));}
   function toast(key,values){$('toast').textContent=t(key,values);$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3800);}
   function sourcesConnected(){return Boolean(snapshot&&(snapshot.sources?.git?.status==='connected'||['connected','partial'].includes(snapshot.sources?.codex?.status)||['connected','partial'].includes(snapshot.outputSource?.status)||['connected','partial'].includes(snapshot.memorySource?.status)||(snapshot.usageSources||[]).some(s=>['connected','partial'].includes(s.status))));}
-  function normalizeMining(raw,fallback=projection?.depth||0){const earned=finite(raw?.earnedDepth,fallback),excavated=Math.min(earned,finite(raw?.excavatedDepth));return{earnedDepth:earned,excavatedDepth:excavated,pendingDepth:Math.max(0,earned-excavated),active:raw?.active===true&&earned-excavated>EPS,lastSettledDate:typeof raw?.lastSettledDate==='string'?raw.lastSettledDate:null,revision:finite(raw?.revision),radio:{date:typeof raw?.radio?.date==='string'?raw.radio.date:'',meters:finite(raw?.radio?.meters),slots:Math.min(3,finite(raw?.radio?.slots)),claimed:Math.min(3,finite(raw?.radio?.claimed))}};}
+  function normalizeMining(raw,fallback=projection?.depth||0){const earned=finite(raw?.earnedDepth,fallback),excavated=Math.min(earned,finite(raw?.excavatedDepth));return{earnedDepth:earned,excavatedDepth:excavated,pendingDepth:Math.max(0,earned-excavated),waitingFind:raw?.waitingFind||null,active:raw?.active===true&&earned-excavated>EPS,lastSettledDate:typeof raw?.lastSettledDate==='string'?raw.lastSettledDate:null,revision:finite(raw?.revision),radio:{date:typeof raw?.radio?.date==='string'?raw.radio.date:'',meters:finite(raw?.radio?.meters),slots:Math.min(3,finite(raw?.radio?.slots)),claimed:Math.min(3,finite(raw?.radio?.claimed))}};}
   function plainNote(value){return String(value||'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/__([^_]+)__/g,'$1').replace(/`([^`]+)`/g,'$1');}
-  function displayName(item){return introFor(item,appearance(item).member).title;}
+  function memberLabel(item,member,members,position=members.indexOf(member)){
+    const title=introFor(item,member).title;
+    return members.length>1 ? num(position+1)+'/'+num(members.length)+' · '+title : title;
+  }
+  function displayName(item){
+    return memberLabel(item,appearance(item).member,gallery.members(item,snapshot));
+  }
   const introCache=new WeakMap();
   function introFor(item,member) {
     const source=window.ItemStory.visualSource(item,snapshot,member), reading=window.VisualReadings.get(source);
     const content=window.WorkReadings.get(window.ItemStory.contentSource(item,snapshot,member));
-    const cached=!member && introCache.get(item);
+    const cached=introCache.get(member||item);
     if(cached && cached.locale===locale && cached.reading===reading && cached.content===content)return cached.copy;
     const copy=window.ItemStory.card(item,snapshot,locale,member,reading,content);
     // A conversation title can itself be the first line of a player's message.
@@ -395,10 +430,11 @@
       copy.title=t('narrationMemory');
       copy.summary=window.ItemStory.memorySummary(item,snapshot,locale);
     }
-    if(!member)introCache.set(item,{locale,reading,content,copy});
+    introCache.set(member||item,{locale,reading,content,copy});
     return copy;
   }
   const memberKey=member=>(member?.record?.id || member?.commit?.hash || '')+'|'+(member?.path || '');
+  const wallLinkKey=member=>(member.record?.fingerprint||member.commit?.hash||'work')+'.'+C.stableHash(member.path).toString(36);
   const settingsSignal='deepmine.narration.preferences.v2';
   let narrationSurface='',narrationMode=null,settingsRevision=0,writingSettings=false,settingsFailed=false,checkAfterWrite=false;
   const narrator=window.WorkNarration.create({request:(url,init)=>fetch(url,init),changed:updateNarration});
@@ -573,7 +609,7 @@
   function showDialog(id){hideHover();const dialog=$(id);if(!dialog.open)dialog.showModal();syncPause();if(id==='settingsDialog')narrationSettings();}
   function closeDialog(id){$(id).close();if(id==='detailDialog')detailId=null;syncPause();}
   document.addEventListener('deepmine:panel-state',()=>{hideHover();syncPause();});
-  function installScene(reset=false,revealStart=false){if(!scene)return;const scope=mode+':'+(snapshot?.project.id||'none');const changed=scope!==activeScope;activeScope=scope;const previous=scene.getState();const settled=mining.excavatedDepth>(Number(previous.depth)||0)+EPS;const lowered=mining.earnedDepth<(Number(previous.depth)||0)-EPS;scene.setState({depth:mining.earnedDepth,startDepth:mining.excavatedDepth,active:mining.active,scopeKey:scope,discoveryHold:Boolean(stageCurrent),reset:reset||changed||settled||lowered,preserveView:!reset&&!changed&&(settled||lowered),revealStart,instant:false,locale,layers:layers(),world:{workFindings:localizedFindings()}});syncPause();}
+  function installScene(reset=false,revealStart=false){if(!scene)return;const scope=mode+':'+(snapshot?.project.id||'none');const changed=scope!==activeScope;activeScope=scope;const previous=scene.getState();const settled=mining.excavatedDepth>(Number(previous.depth)||0)+EPS;const lowered=mining.earnedDepth<(Number(previous.depth)||0)-EPS;scene.setState({depth:mining.earnedDepth,startDepth:mining.excavatedDepth,active:mining.active,scopeKey:scope,discoveryHold:Boolean(stageCurrent || (mode==='live' && mining.waitingFind)),reset:reset||changed||settled||lowered,preserveView:!reset&&!changed&&(settled||lowered),revealStart,instant:false,locale,layers:layers(),world:{workFindings:localizedFindings()}});syncPause();}
   function setDateTabStop(button){
     if(!button || button.tabIndex===0)return;
     const previous=$('timeline').querySelector('[tabindex="0"]');
@@ -658,7 +694,7 @@
     const prose=narrationFor(item,member,'hover',copy);
     const day = snapshot.days.find(record => record.date === item.date);
     const dayUsage = day?.usage.totalTokens == null ? '' : ' · ' + t('totalTokens') + ' ' + num(day.usage.totalTokens);
-    const markup=`<strong>${esc(copy.title)}</strong>${prose.text?'<p class="item-intro">'+esc(prose.text)+'</p>':''}<small>${esc(dateText(item.date,true) + dayUsage)}</small><small>${esc(t('hoverHint'))}</small>`;
+    const markup=`<strong>${esc(displayName(item))}</strong>${prose.text?'<p class="item-intro">'+esc(prose.text)+'</p>':''}<small>${esc(dateText(item.date,true) + dayUsage)}</small><small>${esc(t('hoverHint'))}</small>`;
     if(markup!==hoverMarkup){
       card.innerHTML=markup;
       hoverMarkup=markup;hoverSprite=null;
@@ -681,6 +717,10 @@
     card.style.top = Math.round(Math.max(60, Math.min(rect.top,window.innerHeight-box.height-90))) + 'px';
   }
 
+  function workPageButtons(members,selected){
+    const position=members.indexOf(selected);
+    return `<button type="button" data-work-step="-1" ${position<=0?'disabled':''}>${esc(storyLabel('上一件','Previous','前の作品'))}</button><span>${num(position+1)} / ${num(members.length)}</span><button type="button" data-work-step="1" ${position+1>=members.length?'disabled':''}>${esc(storyLabel('下一件','Next','次の作品'))}</button>`;
+  }
   function renderDetail(id,requestedMember='') {
     const dialog = $('detailDialog'), body = $('detailBody');
     const same = detailId === id, scroll = same ? dialog.scrollTop : 0;
@@ -737,10 +777,9 @@
       const credit=sprite.generatedSketch?'<figcaption class="subtle">'+storyLabel('根据这件作品绘制的游戏插画','Game illustration drawn from this work','作品の内容をもとに描いたゲーム内の挿絵')+'</figcaption>':'';
       art='<figure class="work-imprint-preview"><canvas id="detailImprint" width="144" height="90" role="img" aria-label="'+esc(copy.title)+'"></canvas>'+credit+'</figure>';
     }
-    const position = members.indexOf(selected);
     const facts=[copy.duration,prose.status==='ready' && copy.summary!==prose.text && copy.summary].filter(Boolean);
     const factsOpen=same && body.querySelector('.work-facts')?.open;
-    const navigation = members.length>1 ? `<nav class="work-pages"><button type="button" data-work-step="-1" ${position===0?'disabled':''}>${esc(storyLabel('上一件','Previous','前の作品'))}</button><span>${num(position+1)} / ${num(members.length)}</span><button type="button" data-work-step="1" ${position+1===members.length?'disabled':''}>${esc(storyLabel('下一件','Next','次の作品'))}</button></nav>` : '';
+    const navigation = members.length>1 ? '<nav class="work-pages">'+workPageButtons(members,selected)+'</nav>' : '';
     const requestedTime=copy.requestedAt ? timeText(copy.requestedAt):'';
     const timeLabel = {
       create:storyLabel('生成于','Created','生成日時'),edit:storyLabel('修改于','Edited','編集日時'),
@@ -768,10 +807,10 @@
 
     body.innerHTML = `
       <div class="record-type"><canvas id="detailSprite" width="64" height="64" aria-hidden="true"></canvas><small>${esc(t(type))} · ${esc(timeLabel)} ${esc(copy.when || dateText(item.date,true))}</small></div>
-      <p class="item-intro" data-narration-status="${prose.status}"${prose.text?'':' hidden'}>${esc(prose.text)}</p>
+      ${navigation}<p class="item-intro" data-narration-status="${prose.status}"${prose.text?'':' hidden'}>${esc(prose.text)}</p>
       ${facts.length?'<details class="work-facts"'+(factsOpen?' open':'')+'><summary>'+esc(t('narrationFacts'))+'</summary>'+facts.map(fact=>'<p>'+esc(fact)+'</p>').join('')+'</details>':''}
-      ${art}${navigation}
-      ${item.pending ? '<p>' + esc(t('unexcavated')) + '</p>' : '<button data-locate="' + esc(item.id) + '">↓ ' + esc(t('locate')) + '</button>'}
+      ${art}
+      ${item.pending || item.depth>Math.max(mining.excavatedDepth,Number(visual.depth)||0)+EPS ? '<p>' + esc(t('unexcavated')) + '</p>' : '<button data-locate="' + esc(item.id) + '">↓ ' + esc(t('locate')) + '</button>'}
       <details class="record-details"${expanded ? ' open' : ''}><summary>${esc(t('recordSources'))}</summary>
         ${copy.originalTitle||copy.originalSummary?'<section class="evidence-entry"><small>'+esc(storyLabel('作品说明原文','Original work description','元の作品説明'))+'</small>'+(copy.originalTitle?'<strong>'+esc(copy.originalTitle)+'</strong>':'')+(copy.originalSummary?'<p>'+esc(copy.originalSummary)+'</p>':'')+'</section>':''}
         ${prose.status==='unavailable'?'<small>'+esc(t('narrationUnavailable'))+'</small> <button type="button" data-retry-narration>'+esc(t('narrationRetry'))+'</button>':''}
@@ -859,7 +898,14 @@
     if(snapshot?.memories?.length)rows.push({name:t('conversation'),status:'observed',notes:[t('memorySourceNote')]});
 updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fictional'))}</p>`:''}${rows.map(row=>`<div class="source-row"><strong>${esc(row.name)}</strong><span class="source-state">${esc(t(row.status||'unknown'))}</span>${row.notes?.length?`<small>${row.notes.map(esc).join('<br>')}</small>`:''}</div>`).join('')}${snapshot?`<p class="subtle">${esc(t('project'))} · ${esc(snapshot.project.label)}<br>${esc(t('lastSync'))} · ${esc(timeText(snapshot.collectedAt))}</p>`:''}${findings.some(item=>item.pending)?`<h3>${esc(t('pendingRecords',{count:num(findings.filter(item=>item.pending).length)}))}</h3><ul class="file-list">${findings.filter(item=>item.pending).map(item=>`<li><button data-open-record="${esc(item.id)}">${esc(displayName(item))}</button></li>`).join('')}</ul>`:''}<p class="subtle">${esc(t('openLauncher'))}</p><div class="source-actions"><button data-refresh>${esc(t('refresh'))}</button><button data-demo>${esc(t('demo'))}</button></div>`);}
   function onProgress(value){if(value.scopeKey&&value.scopeKey!==activeScope)return;const previousMode=visual.mode;visual={...visual,...value};if(value.pace)pace=value.pace;if(previousMode!==visual.mode)syncPresentation();const date=value.viewDate||value.visibleLayerDate||value.currentLayerDate;if(date)viewDate=date;renderHUD();if(mode==='live'&&snapshot&&mining.active&&visual.depth>lastSavedDepth+EPS){queuedDepth=Math.max(queuedDepth,Math.min(mining.earnedDepth,visual.depth));scheduleProgress(visual.depth>=mining.earnedDepth-EPS);}else if(mode==='demo'&&mining.active){const previous=mining.excavatedDepth;mining.excavatedDepth=Math.min(mining.earnedDepth,visual.depth);mining.radio.date=currentDate();mining.radio.meters+=Math.max(0,mining.excavatedDepth-previous);mining.radio.slots=[20,80,160].filter(m=>mining.radio.meters>=m).length;claimDemoNews();mining.pendingDepth=Math.max(0,mining.earnedDepth-mining.excavatedDepth);if(mining.pendingDepth<=EPS)mining.active=false;renderHUD();}}
-  function applyMining(raw,reset=false,revealStart=false){const next=normalizeMining(raw);if(next.revision<mining.revision&&!reset)return;mining=next;lastSavedDepth=Math.max(reset?0:lastSavedDepth,mining.excavatedDepth);queuedDepth=Math.max(lastSavedDepth,Math.min(queuedDepth,mining.earnedDepth));installScene(reset,revealStart);renderHUD();renderSettings();}
+  function applyMining(raw,reset=false,revealStart=false){
+    const next=normalizeMining(raw);
+    if(next.revision<mining.revision&&!reset)return;
+    mining=next;
+    lastSavedDepth=Math.max(reset?0:lastSavedDepth,mining.excavatedDepth);
+    queuedDepth=mining.waitingFind?lastSavedDepth:Math.max(lastSavedDepth,Math.min(queuedDepth,mining.earnedDepth));
+    syncLiveStage();installScene(reset,revealStart);renderHUD();renderSettings();
+  }
   function applySnapshot(value,incomingMode='live'){const clean=C.validateSnapshot(value);if(incomingMode==='live'&&clean.mode==='demo')throw new Error('Demo is not a live source');const changed=mode!==incomingMode||snapshot?.project.id!==clean.project.id;if(changed){resetPresentation();generation++;progressTimer&&clearTimeout(progressTimer);progressTimer=null;queuedDepth=0;lastSavedDepth=0;miningController?.abort();miningController=null;progressBusy=false;hideHover();if($('detailDialog').open)closeDialog('detailDialog');}
     snapshot=clean;daysByDate=new Map(clean.days.map(day=>[day.date,day]));snapshot.preferences=clean.preferences||{locale:I.normalize(value.preferences?.locale)};mode=incomingMode;projection=C.project(clean);findings=F.build(clean);findingIndex=new Map(findings.map(item=>[item.id,item]));appearances.clear();hasSnapshot=true;failed=false;
     if(changed){wallVersions.clear();sprites.reset();window.VisualReadings.clearPending();narrator.reset();narrationMode=null;if(mode==='live')void narrationSettings();}
@@ -874,15 +920,15 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
     }
     const next=incomingMode==='demo'?normalizeMining(rawMining||{earnedDepth:projection.depth,excavatedDepth:demoFront,active:false,lastSettledDate:clean.history?.enabled?past?.date||null:null,revision:0}):normalizeMining(rawMining,projection.depth);
     if(changed||next.revision>=mining.revision)mining=next;lastSavedDepth=Math.max(changed?0:lastSavedDepth,mining.excavatedDepth);queuedDepth=Math.max(lastSavedDepth,Math.min(queuedDepth,mining.earnedDepth));
-    locale=I.resolve({override,preference:clean.preferences?.locale||value.preferences?.locale,languages:navigator.languages||[navigator.language]});if(changed){viewDate=currentDate();restoreStage();}if(changed)revealFloor=mining.excavatedDepth;localize();installScene(changed);reconcilePresentation();if(detailId&&$('detailDialog').open){if(findItem(detailId))renderDetail(detailId);else closeDialog('detailDialog');}if(hovered)renderHover(hovered);
+    locale=I.resolve({override,preference:clean.preferences?.locale||value.preferences?.locale,languages:navigator.languages||[navigator.language]});if(changed){viewDate=currentDate();restoreStage();}if(changed)revealFloor=mining.excavatedDepth;localize();syncLiveStage(changed);installScene(changed);reconcilePresentation();if(detailId&&$('detailDialog').open){if(findItem(detailId))renderDetail(detailId);else closeDialog('detailDialog');}if(hovered)renderHover(hovered);
     if(linkedFind && mode==='live'){
       const item=findItem(linkedFind),key=findParams.get('workVersion');
       linkedFind=null;
-      if(item && !item.pending && item.depth<=mining.excavatedDepth+EPS &&
-        (key===null || window.ItemStory.works(item,snapshot).some(member=>memberKey(member)===key))){
-        if(key)selectWallVersion(item,window.ItemStory.works(item,snapshot).find(member=>memberKey(member)===key));
+      const matches=item&&key?gallery.members(item,snapshot).filter(member=>wallLinkKey(member)===key||memberKey(member)===key):[];
+      if(item && !item.pending && item.depth<=mining.excavatedDepth+EPS && (key===null || matches.length===1)){
+        if(key)selectWallVersion(item,matches[0]);
         scene.focusArtifact?.(item.id);
-        if(findParams.get('view')!=='mine'){renderDetail(item.id,key||'');showDialog('detailDialog');}
+        if(findParams.get('view')!=='mine'){renderDetail(item.id,key?memberKey(matches[0]):'');showDialog('detailDialog');}
         openCodexOnLoad=false;
       }
     }
@@ -916,7 +962,7 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
   async function startMining(){if(starting||!snapshot||mining.active||mining.earnedDepth-(Number(visual.depth)||0)<=EPS)return false;starting=true;renderHUD();try{if(mode==='demo'){revealFloor=Math.max(mining.excavatedDepth,Number(visual.depth)||0);scene.returnToDrill?.();mining.active=true;installScene(false,true);toast('started');return true;}if(failed){toast('miningUnavailable');return false;}const result=await requestMining({action:'start'});if(result){revealFloor=Math.max(mining.excavatedDepth,Number(visual.depth)||0);scene.returnToDrill?.();applyMining(result,false,true);toast('started');return true;}return false;}catch(_){toast('requestFailed');return false;}finally{starting=false;renderHUD();}}
   function resetTransport(){wallVersions.clear();appearances.clear();findingIndex.clear();sprites.reset();narrator.reset();archivedSketches.reset();illustrations.clear();narrationSurface='';narrationMode=null;resetPresentation();generation++;refreshController?.abort();refreshController=null;refreshing=false;miningController?.abort();miningController=null;clearTimeout(progressTimer);progressTimer=null;progressBusy=false;queuedDepth=0;lastSavedDepth=0;starting=false;}
   function enterDemo(){resetTransport();for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();detailId=null;const demo=window.DemoRecords?.create()||window.ExpeditionWorld.demoSnapshot();applySnapshot(demo,'demo');scene.returnToDrill?.();syncPause();}
-  function enterLive(){if(sampleVisit){location.assign('/');return;}const url=new URL(location.href);url.searchParams.delete('demo');history.replaceState(null,'',url);resetTransport();snapshot=null;projection=null;findings=[];mode='live';mining=normalizeMining(null,0);hasSnapshot=false;failed=false;viewDate='';detailId=null;for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();hideHover();localize();installScene(true);refresh();}
+  function enterLive(){if(sampleVisit){location.assign(projectSelection);return;}const url=new URL(location.href);url.searchParams.delete('demo');history.replaceState(null,'',url);resetTransport();snapshot=null;projection=null;findings=[];mode='live';mining=normalizeMining(null,0);hasSnapshot=false;failed=false;viewDate='';detailId=null;for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();hideHover();localize();installScene(true);refresh();}
   scene=window.ExpeditionScene.create($('expeditionCanvas'),{gallery,getWorkSprite:workSprite,pauseAtFindings:true,onHover:renderHover,onInspect:inspect,onArtifact:inspect,onProgress,onImpact:event=>sound?.play(event),onReveal:reveal});
   $('stageContinue').addEventListener('click',continueDig);
   $('sourceBody').addEventListener('click',event=>{if(event.target.closest('[data-replay-source]'))replaySource();});
@@ -932,6 +978,14 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
   });
   $('discoveryStage').addEventListener('cancel',event=>event.preventDefault());
   $('stageContent').addEventListener('click',event=>{const target=event.target.closest('[data-stage-record]');if(target)inspect(target.dataset.stageRecord);});
+  $('stageWorks').addEventListener('click',event=>{
+    const step=event.target.closest('[data-work-step]'),item=stageCurrent&&findItem(stageCurrent.ids[0]);
+    if(!step||!item)return;
+    const members=gallery.members(item,snapshot);
+    const member=members[members.indexOf(appearance(item).member)+Number(step.dataset.workStep)];
+    if(member){selectWallVersion(item,member);renderStage();}
+    $('stageWorks').querySelector('[data-work-step="'+step.dataset.workStep+'"]:not(:disabled)')?.focus({preventScroll:true});
+  });
   function setNewsEnabled(enabled){
     if(enabled===newsEnabled)return;
     newsEnabled=enabled;
@@ -968,7 +1022,7 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
   for(const dialog of document.querySelectorAll('dialog:not(#discoveryStage)'))dialog.addEventListener('close',()=>{
     if(dialog.id==='detailDialog' && !dialog.open){
       const url=new URL(location.href);
-      if(url.searchParams.has('find')){
+      if(url.searchParams.has('find') && url.searchParams.get('view')!=='mine'){
         url.searchParams.delete('find');url.searchParams.delete('workVersion');
         history.replaceState(history.state,'',url);
       }
@@ -984,6 +1038,7 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
     if(event.key===newsPreference || event.key===null)setNewsEnabled(event.newValue==='on');
   });
   const poll=setInterval(()=>{if(!document.hidden){refresh();void narrationSettings();}},20000);
+  const holdPoll=setInterval(checkSharedHold,1000);
   document.addEventListener('visibilitychange',()=>{
     // WebKit may dispatch hidden after pagehide. The final save is already in flight.
     if(pageLeaving)return;
@@ -1000,7 +1055,7 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
         body:JSON.stringify({action:'progress',depth:Math.min(visual.depth,mining.earnedDepth)})}).catch(()=>{});
     }
     if(event.persisted){scene.setPaused(true);return;}
-    clearInterval(poll);resetPresentation();motionPreference.removeEventListener('change',syncPresentation);
+    clearInterval(poll);clearInterval(holdPoll);resetPresentation();motionPreference.removeEventListener('change',syncPresentation);
     clearTimeout(progressTimer);clearTimeout(toastTimer);refreshController?.abort();miningController?.abort();
     archivedSketches.reset();cancelAnimationFrame(artFrame);sprites.reset();scene.destroy();sound?.destroy();
   });
@@ -1013,13 +1068,34 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
     const works=findings.filter(item=>item.date===date&&item.paths?.length);
     const files=new Set(works.flatMap(item=>item.paths));
     const observed=files.size>0||['connected','partial'].includes(snapshot.outputSource?.status)||snapshot.sources.git.status==='connected';
+    const entries=works.flatMap(item=>{
+      const members=gallery.members(item,snapshot);
+      return members.map((member,position)=>{
+        const edition=window.GalleryLedger.edition(item,member);
+        return {title:memberLabel(item,member,members,position),open(){
+          const current=findItem(item.id);
+          if(mode!=='live'||!current)return;
+          const chosen=gallery.members(current,snapshot).find(work=>window.GalleryLedger.edition(current,work)===edition);
+          if(!chosen)return;
+          renderDetail(current.id,memberKey(chosen));showDialog('detailDialog');
+        }};
+      });
+    });
     return {projectId:snapshot.project.id,date,timezone:snapshot.timezone,tokens:day?.usage.totalTokens??null,
       workFiles:observed?files.size:null,activeMeters:mining.radio.date===date?Math.floor(mining.radio.meters):null,
-      titles:works.slice(0,3).map(displayName)};
+      entries,titles:entries.map(entry=>entry.title)};
   }
   window.DeepmineApp=Object.freeze({getWorkday,getState:()=>Object.freeze({mode,locale,projectId:snapshot?.project.id,ready:Boolean(snapshot),earnedDepth:mining.earnedDepth,excavatedDepth:mining.excavatedDepth,pendingDepth:mining.pendingDepth,visualDepth:Number(visual.depth)||0,active:mining.active,findings:findings.length,viewDate,pace,presentation:stageCurrent?{kind:stageCurrent.kind,ids:stageCurrent.ids||[stageCurrent.item.id],queued:stageQueue.length}:null,newsCount:news.items.length,radio:{...mining.radio},historyStart:snapshot?.history?.startDate||projection?.days[0]?.date,historyEnd:currentDate()}),refresh,startMining,setLocale,enterDemo,enterLive});
+  $('projectName').href=projectSelection;
+  $('settingsProjectButton').addEventListener('click',()=>location.assign(projectSelection));
+  if(hostedSample){
+    $('settingsProjectButton').dataset.i18n='downloadDeepmine';
+    $('projectName').dataset.title='downloadDeepmine';
+    $('chooseAfterFind').href=projectSelection;
+    $('chooseAfterFind').dataset.i18n='downloadDeepmine';
+  }
   if(sampleVisit){
-    $('exitDemoButton').dataset.i18n='chooseProject';
+    $('exitDemoButton').dataset.i18n=hostedSample?'downloadDeepmine':'chooseProject';
     $('chooseAfterFind').hidden=false;
   }
   localize();installScene(true);

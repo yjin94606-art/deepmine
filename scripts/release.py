@@ -315,6 +315,7 @@ def asset_name(kind):
 
 def write_checksums(output):
     import windows_bundle
+    import windows_setup
     source, windows = (output / asset_name(kind) for kind in ("source", "windows-x64"))
     names = {p.relative_to(ROOT).as_posix() for p in sources()}
     with zipfile.ZipFile(source) as app, zipfile.ZipFile(windows) as portable:
@@ -333,8 +334,10 @@ def write_checksums(output):
         for name, expected_hash in windows_bundle.RUNTIME_HASHES.items():
             with portable.open("Deepmine/runtime/" + name) as runtime_file:
                 require(sha256(runtime_file) == expected_hash, "Incorrect Node runtime file: " + name)
+    setup = output / windows_setup.name()
+    windows_setup.verify_payload(setup, windows)
     lines = []
-    for filename in (source, windows):
+    for filename in sorted((source, windows, setup)):
         with filename.open("rb") as stream:
             lines.append(f"{sha256(stream)}  {filename.name}\n")
     with tempfile.TemporaryDirectory(dir=output) as temp:

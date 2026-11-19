@@ -2,7 +2,7 @@
 
 **What did you make with today's tokens?** Deepmine turns a local AI project into a playable pixel-art mine. Recorded usage and work determine how deep you can dig. When the rock breaks, you can find the portrait you drew or the sound you recorded. Scroll back up the shaft a week later and they're still there.
 
-[Download Deepmine](https://github.com/yjin94606-art/deepmine/releases/latest) · [Quick start](docs/QUICKSTART.md) · [简体中文](docs/README.zh-CN.md)
+**[Play the sample in your browser](https://yjin94606-art.github.io/deepmine/)** · **[Download for Windows x64](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64-setup.exe)** · [macOS / Linux](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-source.zip) · [简体中文](docs/README.zh-CN.md)
 
 ![The drill breaks through to a portrait of a botanist in a yellow scarf, then resumes digging. The player scrolls back to an earlier day to inspect a garden proposal.](docs/launch/digging-loop.gif)
 
@@ -10,13 +10,13 @@
 
 ## Download and play
 
-Choose the ZIP for your system under **Assets**. Both downloads include the playable sample mine. [Get the V1 release](https://github.com/yjin94606-art/deepmine/releases/tag/v1.0.1)
+On Windows, open the installer once. It starts the game in your browser and adds **Deepmine** to the Start menu. The sample plays offline. [Get the V1 release](https://github.com/yjin94606-art/deepmine/releases/tag/v1.1.0)
 
-| System | Download | After extracting the ZIP |
+| System | Download | First launch |
 | --- | --- | --- |
-| Windows x64 | `deepmine-v1.0.1-windows-x64.zip` | Double-click **Open Deepmine.cmd**. The runtime is included. |
-| macOS | `deepmine-v1.0.1-source.zip` | With Node.js 20 or newer installed, double-click **Open Deepmine.command**. |
-| Linux | `deepmine-v1.0.1-source.zip` | With Node.js 20 or newer installed, run `sh open-deepmine.sh` in the extracted folder. |
+| Windows x64 | [Offline installer](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64-setup.exe) · [Portable ZIP](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64.zip) | Open the installer. For the portable edition, extract the ZIP and open **Open Deepmine.cmd**. |
+| macOS | [Source ZIP](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-source.zip) | With Node.js 20 or newer installed, double-click **Open Deepmine.command**. |
+| Linux | [Source ZIP](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-source.zip) | With Node.js 20 or newer installed, run `sh open-deepmine.sh` in the extracted folder. |
 
 Choose **Try a sample mine** on the welcome screen. You can reach the first find without an account or API key. **Choose my project** takes you back to the welcome screen, where you can select a recent Codex or Claude Code project or browse to a folder where you keep your work. Leave the launcher window open while you play. [First launch, saves and upgrades](docs/QUICKSTART.md)
 
@@ -44,6 +44,10 @@ Missing usage appears as **Unknown**. Choose one metering route per call to avoi
 ## What's next
 
 Deepmine will keep getting updates after 1.0. The focus is on how each dig feels, how reliably tools report work, and how well you can recognize what you made when it comes out of the rock. If a find looks wrong or a session is missing, tell us which tool you used and what you expected to see. [Give feedback](https://github.com/yjin94606-art/deepmine/issues) · [Follow releases](https://github.com/yjin94606-art/deepmine/releases)
+
+## How it was built
+
+The maintainer shaped Deepmine by playing each build and asking for changes to the art, the drill and the finds. Codex implemented those iterations in JavaScript and Canvas. One change in 1.1 came from opening a second browser while a find was on screen. The new window used to dig past it. Both windows now wait at the same depth until someone picks up the find.
 
 ## Privacy
 

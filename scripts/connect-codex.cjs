@@ -126,6 +126,7 @@ async function connect(args,options={}) {
       selectedArgs.push('--project',project);
     }
     project=path.resolve(project);
+    previous=await require('./setup.cjs').savedProjectSettings(directory,project,previous) || previous;
     const sameProject=previous.projectPath && canonical(previous.projectPath)===canonical(project);
     if(!get('--outputs') && !(sameProject && Array.isArray(previous.outputDirs))){
       const real=await fs.realpath(project);

@@ -54,4 +54,7 @@
 #depthBoard .workday-values > div { min-width:0; display:grid; grid-template-rows:subgrid; grid-row:span 2; row-gap:2px; align-content:start; }
 #depthBoard .workday-values dt { color:var(--secondary); font-size:.85rem; text-align:start; line-height:1.25; }
 #depthBoard .workday-values dd { color:var(--paper); margin:0; text-align:start; font-size:clamp(.95rem,4vw,1.25rem); overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
-#workdayTitles { margin:0; padding:0 0 0 1.2rem; color:#c2d9ce; overflow-wrap:anywhere; font-size:.88rem; }
+#workdayTitles { margin:0; padding:0 0 0 1.2rem; color:#c2d9ce; overflow-wrap:anywhere; font-size:.88rem; max-height:13rem; overflow:auto; }
+body:has(#detailDialog[open]) #depthBoard { visibility:hidden; }
+#workdayTitles button { color:inherit; min-height:32px; text-align:start; overflow-wrap:anywhere; text-decoration:underline; text-underline-offset:3px; }
+@media (pointer:coarse) { #workdayTitles button { min-height:44px; } }

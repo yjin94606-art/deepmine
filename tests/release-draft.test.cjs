@@ -11,8 +11,8 @@ async function fixture(t) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'deepmine-draft-'));
   t.after(() => fs.rm(directory, {recursive:true, force:true}));
   let sums = '';
-  for (const kind of ['source', 'windows-x64']) {
-    const name = 'deepmine-v1.2.0-' + kind + '.zip';
+  for (const kind of ['source.zip', 'windows-x64-setup.exe', 'windows-x64.zip']) {
+    const name = 'deepmine-v1.2.0-' + kind;
     await fs.writeFile(path.join(directory, name), kind);
     sums += createHash('sha256').update(kind).digest('hex') + '  ' + name + '\n';
   }
@@ -60,12 +60,12 @@ test('an interrupted draft can resume and repeat without changing any verified a
   await stageDraft(options);
   await stageDraft(options);
   assert.equal(releases.length,1);
-  assert.equal(assets.length,3);
+  assert.equal(assets.length,4);
   releases[0].draft=false;
   await stageDraft(options);
   assets.pop();
   await assert.rejects(stageDraft(options), /Published release/);
-  assert.equal(assets.length,2);
+  assert.equal(assets.length,3);
 });
 test('conflicting assets and externally published drafts are preserved',async t=>{
   const {options, releases, assets, api} = await fixture(t);
@@ -73,7 +73,7 @@ test('conflicting assets and externally published drafts are preserved',async t=
   assets[1].digest='sha256:conflict';
   await assert.rejects(stageDraft(options),/differs/);
   assert.equal(assets[1].digest,'sha256:conflict');
-  assets.pop();assets.pop();
+  assets.splice(1);
   api.getRelease = async () => ({data:{...releases[0],draft:false}});
   await assert.rejects(stageDraft(options), /Draft state changed/);
   assert.equal(assets.length,1);

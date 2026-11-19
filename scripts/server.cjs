@@ -128,6 +128,7 @@ async function start(options = {}) {
     ['ort-wasm-simd-threaded.wasm','application/wasm'], ['clip-vision.onnx','application/octet-stream'],
     ['subjects.f32','application/octet-stream'], ['subjects.json','application/json']
   ]);
+  let hostedPicker;
   const server = http.createServer(async (req, res) => {
     const actualPort = server.address()?.port || port;
     const allowedHosts = new Set([`127.0.0.1:${actualPort}`, `localhost:${actualPort}`]);
@@ -135,6 +136,22 @@ async function start(options = {}) {
     let pathname;
     try { pathname = decodeURIComponent(new URL(req.url, `http://127.0.0.1:${actualPort}`).pathname); } catch { res.writeHead(400); res.end('Invalid path'); return; }
     const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin', 'Referrer-Policy': 'no-referrer' };
+    if(pathname==='/projects'){
+      if(req.method!=='GET' || req.headers['sec-fetch-site']==='cross-site'){
+        res.writeHead(req.method==='GET'?403:405,headers);res.end();return;
+      }
+      try{
+        let url;
+        if(options.openPicker)url=await options.openPicker();
+        else{
+          hostedPicker??=require('./open-mine.cjs').openMine({chooseProject:true,env:{...process.env,DEEPMINE_DATA_DIR:dataDirectory}})
+            .catch(error=>{hostedPicker=null;throw error;});
+          url=(await hostedPicker).url;
+        }
+        res.writeHead(303,{...headers,Location:url});res.end();
+      }catch{res.writeHead(503,headers);res.end('Could not open the project picker. Reopen Deepmine and try again.');}
+      return;
+    }
     if (pathname.startsWith('/vision/')) {
       const name = pathname.slice(8);
       if (!['GET','HEAD'].includes(req.method) || !visionAssets.has(name)) { res.writeHead(404,headers); res.end(); return; }
@@ -202,6 +219,11 @@ async function start(options = {}) {
         return;
       }
       if(pathname==='/api/mining'||pathname==='/api/events'){
+        if(pathname==='/api/mining' && req.method==='GET' && req.headers['x-deepmine-client']==='mining'){
+          if(!cached)await snapshot();
+          const mining=await history.getMining();
+          res.writeHead(200,{...headers,'Content-Type':'application/json'});res.end(JSON.stringify({mining}));return;
+        }
         if(req.method!=='POST'){res.writeHead(405,{...headers,Allow:'POST'});res.end('POST required');return;}
         const authorized=pathname==='/api/mining'?req.headers['x-deepmine-client']==='mining':typeof req.headers['x-deepmine-key']==='string'&&req.headers['x-deepmine-key'].length===ingestionKey.length&&crypto.timingSafeEqual(Buffer.from(req.headers['x-deepmine-key']),Buffer.from(ingestionKey));
         if(!authorized||!/^application\/json(?:;|$)/i.test(req.headers['content-type']||'')){res.writeHead(403,headers);res.end('Local application authorization required');return;}
@@ -209,7 +231,7 @@ async function start(options = {}) {
           const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>65536)throw new Error('Request too large');chunks.push(chunk);}
           const input=JSON.parse(Buffer.concat(chunks).toString('utf8'));
           if(pathname==='/api/mining'){
-            if(!input||Object.keys(input).some(key=>!['action','depth'].includes(key)))throw new Error('Invalid action');
+            if(!input||Object.keys(input).some(key=>!['action',input.action==='acknowledge'?'id':'depth'].includes(key)))throw new Error('Invalid action');
             await snapshot();const mining=await history.command(input);cached={...cached,mining};res.writeHead(200,{...headers,'Content-Type':'application/json'});res.end(JSON.stringify({mining}));
           }else{const result=await ingest.ingest(input);res.writeHead(result.accepted||result.status==='duplicate'?200:result.status==='conflict'?409:400,{...headers,'Content-Type':'application/json'});res.end(JSON.stringify(result));}
         }catch{res.writeHead(400,{...headers,'Content-Type':'application/json'});res.end(JSON.stringify({error:'Invalid local event or action; no additional work was minted.'}));}return;
@@ -314,6 +336,7 @@ async function start(options = {}) {
   }
   function releaseLock(){try{if(JSON.parse(syncFS.readFileSync(lockFile,'utf8')).token===lockToken)syncFS.unlinkSync(lockFile);}catch{}}
   const syncTimer=setInterval(()=>snapshot().catch(()=>{}),30000);syncTimer.unref();
+  server.once('close',()=>{hostedPicker?.then(instance=>instance.close()).catch(()=>{});});
   server.once('close', () => { clearInterval(syncTimer);releaseLock();capture.close();news.close();narration.close().catch(()=>{});if (ai) Promise.resolve(ai.close()).catch(() => {}); });
   try{await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });}catch(error){clearInterval(syncTimer);releaseLock();capture.close();if(ai)await ai.close().catch(()=>{});throw error;}
   const address = server.address();

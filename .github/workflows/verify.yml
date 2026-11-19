@@ -66,12 +66,16 @@ jobs:
           $releaseDir = Join-Path $env:RUNNER_TEMP 'deepmine-release'
           $sourceZip = Get-Item (Join-Path $releaseDir 'deepmine-*-source.zip')
           python scripts/windows_bundle.py --source $sourceZip.FullName --output $releaseDir --verify
-      - name: Keep the verified Windows x64 ZIP
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/windows_setup.py --output $releaseDir --verify
+      - name: Keep the verified Windows x64 downloads
         if: matrix.os == 'windows-latest' && matrix.node == 24 && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v4
         with:
           name: deepmine-windows-x64
-          path: ${{ runner.temp }}/deepmine-release/deepmine-*-windows-x64.zip
+          path: |
+            ${{ runner.temp }}/deepmine-release/deepmine-*-windows-x64.zip
+            ${{ runner.temp }}/deepmine-release/deepmine-*-windows-x64-setup.exe
           if-no-files-found: error
           compression-level: 0
           retention-days: 7

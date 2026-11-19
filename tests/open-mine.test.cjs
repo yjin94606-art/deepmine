@@ -52,6 +52,8 @@ async function fixture(t,configured=true){
 test('the launcher prints diagnostics before project selection without creating a save',async t=>{
   const f=await fixture(t,false);
   const run=await execFile(process.execPath,[require.resolve('../scripts/open-mine.cjs'),'--diagnostics'],{env:f.env});
+  const doctor=await execFile(process.execPath,[require.resolve('../scripts/doctor.cjs')],{env:f.env});
+  assert.match(doctor.stdout,/npm run open.*sample mine/);
   const report=JSON.parse(run.stdout);
   assert.equal(report.configuration,'not-configured');
   assert.equal(report.deepmine,require('../package.json').version);
@@ -114,7 +116,7 @@ test('an existing collector on a custom port is reused only for the same setting
     const reopened=await f.open();
     assert.equal(reopened.port,old.port);assert.equal(reopened.reused,true);
     await fs.writeFile(f.file,JSON.stringify({...f.config,locale:'ja'}));
-    await assert.rejects(f.open(),/previous Deepmine service/);
+    await assert.rejects(f.open(),/previous Deepmine service|之前的深矿启动窗口|前の Deepmine/);
   }finally{
     old.server.closeAllConnections();
     await new Promise(resolve=>old.server.close(resolve));
@@ -160,6 +162,62 @@ test('a fresh installation and a missing saved project open the picker without s
 test('a malformed preference file stays intact and produces an actionable error',async t=>{
   const f=await fixture(t);
   await fs.writeFile(f.file,'damaged');
-  await assert.rejects(f.open(),/Cannot read the saved configuration/);
+  await assert.rejects(f.open(),/config\.json/);
   assert.equal(await fs.readFile(f.file,'utf8'),'damaged');
+});
+
+test('switching between two saved mines and restarting preserves their own settings and depths',async t=>{
+  const f=await fixture(t);
+  const firstConfig={...f.config,claudeRoot:path.join(f.dir,'claude'),outputDirs:['art'],memories:{enabled:true}};
+  await fs.mkdir(path.join(firstConfig.projectPath,'art'));
+  await fs.writeFile(path.join(firstConfig.projectPath,'art','Sketch.md'),'A small lighthouse');
+  await fs.writeFile(f.file,JSON.stringify(firstConfig));
+  const secondFolder=path.join(f.dir,'Studio B');
+  await fs.mkdir(secondFolder);
+  await fs.writeFile(path.join(secondFolder,'Cue.md'),'A door chime');
+  const first=await f.open();
+  async function post(url,client,body){
+    const reply=await fetch(url,{method:'POST',headers:{Origin:new URL(url).origin,'Content-Type':'application/json','X-Deepmine-Client':client},body:JSON.stringify(body)});
+    const result=await reply.json();
+    assert.equal(reply.status,200,JSON.stringify(result));
+    return result;
+  }
+  async function depth(url,meters){
+    const endpoint=url+'api/mining';
+    await post(endpoint,'mining',{action:'start'});
+    const {mining}=await post(endpoint,'mining',{action:'progress',depth:meters});
+    return mining.excavatedDepth;
+  }
+  async function pick(url,folder){
+    const redirect=await fetch(url+'projects',{redirect:'manual'});
+    assert.equal(redirect.status,303);
+    const picker=redirect.headers.get('location');
+    const {projects}=await (await fetch(picker+'api/projects')).json();
+    const known=projects.find(item=>item.path===folder);
+    const choice=known?{id:known.id}:{folder};
+    const result=await post(picker+'api/connect','welcome',{...choice,memories:false});
+    return {url:result.url,known};
+  }
+  const depthOf=async url=>(await (await fetch(url+'api/snapshot')).json()).mining.excavatedDepth;
+  assert.equal(await depth(first.url,1),1);
+  const second=await pick(first.url,secondFolder);
+  assert.equal(second.known,undefined);
+  assert.notEqual(first.url,second.url);
+  assert.equal(await depthOf(second.url),0);
+  assert.equal(await depth(second.url,2),2);
+  const returned=await pick(second.url,firstConfig.projectPath);
+  assert.equal(returned.known.saved,true);
+  assert.equal(returned.url,first.url);
+  assert.equal(await depthOf(returned.url),1);
+  assert.deepEqual(JSON.parse(await fs.readFile(f.file)),firstConfig);
+  await first.close();
+  const reopened=await f.open();
+  assert.equal(await depthOf(reopened.url),1);
+  const reopenedSecond=await pick(reopened.url,secondFolder);
+  assert.equal(reopenedSecond.known.saved,true);
+  assert.equal(await depthOf(reopenedSecond.url),2);
+  const config=JSON.parse(await fs.readFile(f.file));
+  assert.equal(config.projectPath,secondFolder);
+  assert.equal(config.memories.enabled,false);
+  assert.deepEqual(config.outputDirs,['.']);
 });

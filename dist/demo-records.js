@@ -119,5 +119,9 @@
     }
     return describeSample(item,snapshot,locale)?.short || null;
   }
-  return Object.freeze({create,describeSample,flavorFor});
+  function imagePath(name) {
+    if(!['sample-02.png','garden.png'].includes(name))return null;
+    return typeof document==='undefined'?'/demo-assets/'+name:new URL('demo-assets/'+name,document.baseURI).pathname;
+  }
+  return Object.freeze({create,describeSample,flavorFor,imagePath});
 });

@@ -38,8 +38,12 @@
       $('workdayTokenLabel').textContent=t.tokens;$('workdayTokens').textContent=format(work.tokens);
       $('workdayFileLabel').textContent=t.files;$('workdayFiles').textContent=format(work.workFiles);
       $('workdayMeterLabel').textContent=t.active;$('workdayMeters').textContent=work.activeMeters===null?t.unknown:measure(work.activeMeters);
-      $('workdayTitles').hidden=!work.titles.length;
-      $('workdayTitles').replaceChildren(...work.titles.map(title=>{const item=document.createElement('li');item.textContent=title;return item;}));
+      $('workdayTitles').hidden=!work.entries.length;
+      $('workdayTitles').replaceChildren(...work.entries.map(entry=>{
+        const item=document.createElement('li'),button=document.createElement('button');
+        button.type='button';button.textContent=entry.title;button.addEventListener('click',entry.open);
+        item.append(button);return item;
+      }));
     }
     $('boardTitle').textContent=t.title;$('boardClose').ariaLabel=t.close;
     $('boardHeading').textContent=t.today;

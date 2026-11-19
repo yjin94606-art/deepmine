@@ -10,6 +10,33 @@ async function fixture(t,overrides={}){
 }
 async function request(app,route,body,headers={}){const response=await fetch(`http://127.0.0.1:${app.port}${route}`,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json',...headers}:headers,body:body?JSON.stringify(body):undefined});const text=await response.text();let json;try{json=JSON.parse(text);}catch{}return{status:response.status,json,text};}
 const miningHeaders={'X-Deepmine-Client':'mining'};
+async function digThrough(app,depth){
+  for(let i=0;i<=12;i++){
+    const result=await request(app,'/api/mining',{action:'progress',depth},miningHeaders);
+    const hold=result.json.mining.waitingFind;
+    if(!hold)return result;
+    await request(app,'/api/mining',{action:'acknowledge',id:hold.ids[0]},miningHeaders);
+  }
+  throw Error('Could not advance beyond the visible discoveries');
+}
+test('discovery is a durable shared stop; competing progress and repeated acknowledgments cannot skip or count it twice',async t=>{
+  let app=await fixture(t);
+  const initial=(await request(app,'/api/snapshot')).json;
+  const [item]=require('../dist/work-findings.js').build(initial);
+  await request(app,'/api/mining',{action:'start'},miningHeaders);
+  const first=(await request(app,'/api/mining',{action:'progress',depth:item.depth+1},miningHeaders)).json.mining;
+  assert.deepEqual(first.waitingFind,{date:item.date,depth:item.depth,ids:[item.id]});
+  assert.equal(first.excavatedDepth,item.depth);
+  const attempts=await Promise.all([request(app,'/api/mining',{action:'progress',depth:1000},miningHeaders),request(app,'/api/mining',{action:'acknowledge',id:'unrelated'},miningHeaders)]);
+  for(const result of attempts)assert.deepEqual(result.json.mining,first);
+  await new Promise(r=>app.server.close(r));
+  const reopened=await start(app.config);app.apps.push(reopened);
+  assert.deepEqual((await request(reopened,'/api/snapshot')).json.mining.waitingFind,first.waitingFind);
+  assert.deepEqual((await request(reopened,'/api/mining',null,miningHeaders)).json.mining.waitingFind,first.waitingFind);
+  const acknowledgments=await Promise.all(Array.from({length:3},()=>request(reopened,'/api/mining',{action:'acknowledge',id:item.id},miningHeaders)));
+  for(const result of acknowledgments){assert.equal(result.json.mining.waitingFind,null);assert.equal(result.json.mining.revision,first.revision+1);assert.equal(result.json.mining.radio.meters,first.radio.meters);}
+  assert.equal((await request(reopened,'/api/mining',{action:'progress',depth:1000},miningHeaders)).json.mining.excavatedDepth,first.earnedDepth);
+});
 test('a matching earlier picture is served as the reference on an approved process card only',async t=>{
   const first=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+5RfcAAAAASUVORK5CYII=','base64');
   const last=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');
@@ -192,7 +219,7 @@ test('new output day waits for explicit excavation and repeated starts cannot mi
   const app=await fixture(t);const first=(await request(app,'/api/snapshot')).json;assert.equal(first.mining.earnedDepth,30);assert.equal(first.mining.excavatedDepth,0);assert.equal(first.mining.active,false);assert.equal(first.days.at(-1).usage.totalTokens,null);
   let result=await request(app,'/api/mining',{action:'progress',depth:999999},miningHeaders);assert.equal(result.json.mining.excavatedDepth,0);
   const starts=await Promise.all(Array.from({length:8},()=>request(app,'/api/mining',{action:'start'},miningHeaders)));assert.ok(starts.every(result=>result.json.mining.earnedDepth===30&&result.json.mining.active));
-  result=await request(app,'/api/mining',{action:'progress',depth:999999},miningHeaders);assert.equal(result.json.mining.excavatedDepth,30);assert.equal(result.json.mining.pendingDepth,0);assert.equal(result.json.mining.active,false);
+  result=await digThrough(app,999999);assert.equal(result.json.mining.excavatedDepth,30);assert.equal(result.json.mining.pendingDepth,0);assert.equal(result.json.mining.active,false);
   result=await request(app,'/api/mining',{action:'start'},miningHeaders);assert.equal(result.json.mining.active,false);assert.equal(result.json.mining.earnedDepth,30);
 });
 test('actual server restart restores excavation without replay or extra items',async t=>{
@@ -234,9 +261,9 @@ test('daily radio unlocks local skill stories once from saved manual progress, i
   const claim = () => request(app, '/api/field-news', {action:'claim', date}, headers);
   assert.equal((await claim()).json.status, 'locked');
   await request(app, '/api/mining', {action:'start'}, miningHeaders);
-  await request(app, '/api/mining', {action:'progress',depth:19}, miningHeaders);
+  await digThrough(app,19);
   assert.equal((await claim()).json.items.length, 0);
-  await request(app, '/api/mining', {action:'progress',depth:21}, miningHeaders);
+  await digThrough(app,21);
   const batch = await Promise.all([claim(), claim()]);
   assert.equal(batch.filter(response => response.json.newItem).length, 1);
   assert.equal((await request(app, '/api/field-news')).json.items[0].source, 'Sample skill');
@@ -257,7 +284,7 @@ test('disabled field radio stays explicit before and after an eligible day with 
   const radio = '/api/field-news';
   assert.equal((await request(app, radio)).json.status, 'disabled');
   await request(app, '/api/mining', {action:'start'}, miningHeaders);
-  await request(app, '/api/mining', {action:'progress',depth:22}, miningHeaders);
+  await digThrough(app,22);
   const result = (await request(app, radio, {action:'claim',date:state.history.endDate}, {'X-Deepmine-Client':'field-news'})).json;
   assert.equal(result.slots, 1);
   assert.equal(result.claimed, 0);

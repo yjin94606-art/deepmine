@@ -268,6 +268,13 @@
     const history = historical ? { enabled: true, startDate: days[0]?.date || endDate, endDate, dayCount: days.length, revision: count(raw.history.revision || 0, '历史版本'), capturedAt: raw.history.capturedAt ? timestamp(raw.history.capturedAt, '历史记录时间') : collectedAt } : undefined;
     const mining = raw.mining ? { earnedDepth: count(raw.mining.earnedDepth, '可开挖深度'), excavatedDepth: Math.max(0, Math.min(Number(raw.mining.excavatedDepth) || 0, Number(raw.mining.earnedDepth) || 0)), pendingDepth: Math.max(0, Number(raw.mining.pendingDepth) || 0), active: raw.mining.active === true, revision: count(raw.mining.revision || 0, '开挖版本'), lastSettledDate: isDate(raw.mining.lastSettledDate) ? raw.mining.lastSettledDate : null } : undefined;
     if (history && isDate(raw.history.pacingFrom)) history.pacingFrom = raw.history.pacingFrom;
+    if(mining && Object.hasOwn(raw.mining,'waitingFind')){
+      const hold=raw.mining.waitingFind;
+      if(hold!==null && (!hold || !isDate(hold.date) || !Number.isFinite(hold.depth) || hold.depth<0 || hold.depth>mining.earnedDepth ||
+        !Array.isArray(hold.ids) || hold.ids.length===0 || hold.ids.length>12 || new Set(hold.ids).size!==hold.ids.length ||
+        !hold.ids.every(id=>typeof id==='string' && id.startsWith(project.id+'/'+hold.date+'/') && /^(?:finding\/(?:web|document|image|audio|video|slides|table|code|file)|memory\/[0-2])$/.test(id.slice((project.id+'/'+hold.date+'/').length)))))fail('Invalid waiting discovery');
+      mining.waitingFind=hold?{date:hold.date,depth:hold.depth,ids:[...hold.ids]}:null;
+    }
     if (mining && raw.mining.radio && isDate(raw.mining.radio.date)) {
       const {date, meters, slots, claimed} = raw.mining.radio;
       if (Number.isFinite(meters) && meters >= 0 && Number.isInteger(slots) && slots >= 0 && slots <= 3 &&

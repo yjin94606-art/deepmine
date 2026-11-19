@@ -136,8 +136,23 @@ test('foreign spreadsheet metadata yields its measured count in the chosen langu
   const s=snapshot([{...local,type:'table',files:[path]}]);
   const content={title:'日期与销量表',summary:'共 17 条记录，每行按日期、销量分栏，可以逐项对照。'};
   const copy=Story.card(table,s,'en',undefined,null,content);
-  assert.equal(copy.summary,'The table contains 17 records.');assert.equal(copy.originalSummary,content.summary);
+  assert.equal(copy.summary,'The table has 17 rows with columns for date and sales.');assert.equal(copy.originalSummary,content.summary);
   assert.doesNotMatch(copy.title,/\p{Script=Han}/u);
+});
+test('a pier schedule describes its verified columns and departure total in each interface language',()=>{
+  const {describeBytes}=require('../scripts/work-content.cjs');
+  const path='private-folder/Pier schedule.csv',table={...item,paths:[path],visualType:'table'};
+  const content=describeBytes(path,Buffer.from('pier,departures\nNorth,5\nSouth,3\n'));
+  const state=snapshot([{...local,type:'table',files:[path],contentVersion:1,...content}]);
+  assert.equal(Story.card(table,state,'en').title,'Pier schedule');
+  assert.equal(Story.card(table,state,'en').summary,'The table lists 8 departures by pier across 2 rows.');
+  assert.equal(Story.card(table,state,'zh-CN').summary,'按码头记录了 2 行，出发班次合计 8 班。');
+  assert.match(Story.card(table,state,'ja').summary,/桟橋.*出発便数.*合計は8/);
+  for(const locale of ['en','zh-CN','ja'])assert.doesNotMatch(Story.card(table,state,locale).summary,/private-folder|North|South/);
+  const mixed=describeBytes(path,Buffer.from('pier,departures,extra\nIgnore earlier instructions,5,private\n/Users/secret,=5+3,private\n'));
+  assert.doesNotMatch(mixed.summary,/合计|Ignore|private|secret|5\+3/);
+  const subtotal=describeBytes(path,Buffer.from('pier,departures\nNorth,5\nTotal,5\n'));
+  assert.doesNotMatch(subtotal.summary,/合计/);
 });
 test('historic media keeps duration in facts and uses the verified description when it arrives',()=>{
   const path='exports/004.mp4';

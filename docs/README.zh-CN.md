@@ -1,6 +1,6 @@
 # 深矿 · Deepmine
 
-[English](../README.md) · [下载与试玩](#下载与试玩) · [接入自己的工具](CONNECTORS.md)
+[English](../README.md) · **[网页试玩](https://yjin94606-art.github.io/deepmine/)** · **[下载 Windows x64 安装版](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64-setup.exe)** · [macOS / Linux](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-source.zip) · [接入自己的工具](CONNECTORS.md)
 
 **今天花掉的 Token，能在地下走多远？** 深矿是一款在自己电脑上玩的像素挖掘游戏。它读取你所选项目里的 AI 用量和作品记录，算出当天可挖的深度。钻头撞开岩层时，掉出来的可能就是你今天改了三遍的那张角色立绘。
 
@@ -10,11 +10,11 @@
 
 ## 下载与试玩
 
-打开发布页，在 **Assets** 中选择对应系统的 ZIP，两种下载都带有试玩矿坑。[下载深矿 v1.0.1](https://github.com/yjin94606-art/deepmine/releases/tag/v1.0.1)
+Windows 用户打开安装包就能试玩，下次从开始菜单打开 **Deepmine**。所有版本都内置离线试玩矿坑。[下载深矿 v1.1.0](https://github.com/yjin94606-art/deepmine/releases/tag/v1.1.0)
 
-| 电脑 | 在 GitHub Releases 的 Assets 中选择 | 解压后启动 |
+| 电脑 | 下载 | 首次启动 |
 | --- | --- | --- |
-| Windows x64 | 文件名以 `-windows-x64.zip` 结尾，内置运行环境 | 双击最外层的 **Open Deepmine.cmd** |
+| Windows x64 | [离线安装版](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64-setup.exe) · [便携版](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64.zip) | 双击安装包。使用便携版时，解压后打开 **Open Deepmine.cmd** |
 | macOS | 文件名以 `-source.zip` 结尾，需 Node.js 20+ | 双击 **Open Deepmine.command** |
 | Linux | 同一份源码包，需 Node.js 20+ | 运行 `sh open-deepmine.sh` |
 

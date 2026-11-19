@@ -1,5 +1,6 @@
 .gitattributes
 .github/ISSUE_TEMPLATE/bug_report.yml
+.github/workflows/sample-pages.yml
 .github/workflows/verify.yml
 .gitignore
 CONTRIBUTING.md
@@ -39,6 +40,7 @@ dist/image-palette.mjs
 dist/index.html
 dist/item-intro.js
 dist/item-story.js
+dist/mine-icon.ico
 dist/mine-icon.svg
 dist/mine-ui.css
 dist/output-art.js
@@ -112,8 +114,10 @@ integrations/deepmine.mjs
 integrations/editor-hook.cjs
 open-deepmine.sh
 package.json
+scripts/DeepmineSetup.cs
 scripts/api-capture.cjs
 scripts/artifact-traces.cjs
+scripts/build-sample.cjs
 scripts/build-visual-labels.py
 scripts/collector.cjs
 scripts/connect-codex.cjs
@@ -147,6 +151,7 @@ scripts/treasure.cjs
 scripts/verify.cjs
 scripts/welcome.cjs
 scripts/windows_bundle.py
+scripts/windows_setup.py
 scripts/work-content.cjs
 scripts/work-deliveries.cjs
 scripts/work-illustrations.cjs
@@ -194,6 +199,7 @@ tests/output-art.test.cjs
 tests/output-files.test.cjs
 tests/release-draft.test.cjs
 tests/release_assets_test.py
+tests/sample-pages.browser.cjs
 tests/server.test.cjs
 tests/setup.test.cjs
 tests/source-adapters.test.cjs

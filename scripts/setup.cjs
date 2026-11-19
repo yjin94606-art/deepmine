@@ -4,6 +4,58 @@ const path = require('node:path');
 const { DEFAULT_BASE_URLS } = require('./api-capture.cjs');
 const APP_ROOT = path.resolve(__dirname, '..');
 const {settingsDirectory} = require('./data-directory.cjs');
+const {projectIdentity}=require('./collector.cjs');
+const {canonical}=require('./source-adapters.cjs');
+const {randomUUID}=require('node:crypto');
+
+async function readSettings(file) {
+  try {
+    const settings=JSON.parse(await fs.readFile(file,'utf8'));
+    if (!settings || typeof settings!=='object' || Array.isArray(settings)) throw Error('Invalid configuration');
+    return settings;
+  } catch (error) {
+    if (error.code==='ENOENT') return null;
+    throw Error('现有应用配置无法读取；没有覆盖它。');
+  }
+}
+async function writeSettings(filename,settings) {
+  await fs.mkdir(path.dirname(filename),{recursive:true});
+  const temporary=filename+'.'+randomUUID()+'.tmp';
+  try {
+    await fs.writeFile(temporary,JSON.stringify(settings,null,2)+'\n',{flag:'wx',mode:0o600});
+    await fs.rename(temporary,filename);
+  } finally { await fs.unlink(temporary).catch(error=>{if(error.code!=='ENOENT')throw error;}); }
+}
+function profileFile(directory,project) {
+  return path.join(directory,'project-configs',projectIdentity(project).id+'.json');
+}
+async function savedProjectSettings(directory,project,current) {
+  if (current?.projectPath && canonical(current.projectPath)===canonical(project)) return current;
+  const saved=await readSettings(profileFile(directory,project));
+  if (saved && canonical(saved.projectPath)!==canonical(project)) throw Error('Invalid saved project identity.');
+  return saved;
+}
+async function selectSettings(directory,config) {
+  const active=path.join(directory,'config.json');
+  const previous=await readSettings(active);
+  if (previous?.projectPath && canonical(previous.projectPath)!==canonical(config.projectPath)) {
+    await writeSettings(profileFile(directory,previous.projectPath),previous);
+  }
+  await writeSettings(active,config);
+}
+async function savedProjectPaths(directory) {
+  const base=path.join(directory,'project-configs');
+  const entries=await fs.readdir(base).catch(error=>{if(error.code==='ENOENT')return [];throw error;});
+  const recent=[];
+  const active=await readSettings(path.join(directory,'config.json'));
+  if(active?.projectPath)recent.push(active.projectPath);
+  for(const entry of entries.filter(name=>/^[0-9a-f]{16}\.json$/.test(name))){
+    const stored=await readSettings(path.join(base,entry));
+    if(stored && typeof stored.projectPath==='string' && path.isAbsolute(stored.projectPath) &&
+        path.basename(profileFile(directory,stored.projectPath))===entry)recent.push(stored.projectPath);
+  }
+  return [...new Set(recent)];
+}
 const HELP = "DEEPMINE local setup (Node.js 20+)\nnpm run setup -- --project \"/path/to/project\" [options]\n  --scope PATH          Session cwd boundary (default: project)\n  --codex-root PATH     Override CODEX_HOME or ~/.codex\n  --claude-root PATH    Override CLAUDE_CONFIG_DIR or ~/.claude\n  --usage-import FILES  Comma-separated per-call .ndjson/.jsonl files\n  --outputs DIRS        Comma-separated project-relative output directories\n  --timezone NAME       IANA timezone (default: this computer's timezone)\n  --locale VALUE        auto, zh-CN, en, ja (browser manual choice wins)\n  --history-days DAYS   Scan backfill: 1-10000, default 365; saved history persists\n  --memories            Opt into bounded project conversation excerpts\n  --no-memories         Stop future log-memory collection; keep saved history\n  --capture PROVIDERS   Enable comma-separated openai,anthropic,gemini proxies\n  --no-capture          Disable configured proxy providers\n  --openai-base-url URL     Fixed upstream for OpenAI-compatible routes\n  --anthropic-base-url URL  Fixed upstream for Anthropic Messages\n  --gemini-base-url URL     Fixed upstream for Gemini GenerateContent\n  --no-codex | --codex  Disable/enable Codex collection\n  --no-claude | --claude Disable/enable Claude Code collection\n  --no-imports | --imports Disable/enable configured generic imports\n  --no-ai | --ai       Disable/enable legacy optional Codex interpretation\nRecommended: --no-ai. New setup defaults to AI interpretation disabled.\nProxy capture and log memories are opt-in. Do not put credentials in upstream URLs.\nSettings use your local Deepmine data folder. DEEPMINE_DATA_DIR and existing installation-local configurations are supported.\n";
 async function configure(args, { appRoot = APP_ROOT, env=process.env } = {}) {
   if (args.includes('--help') || args.includes('-h')) return { help: HELP + NEWS_HELP };
@@ -22,15 +74,9 @@ async function configure(args, { appRoot = APP_ROOT, env=process.env } = {}) {
   if (!(await fs.stat(projectReal)).isDirectory()) throw new Error('项目必须是存在的目录。');
   const scopePath = path.resolve(values.get('--scope') || projectPath), scopeReal = await fs.realpath(scopePath), scopeRelative = path.relative(scopeReal, projectReal);
   if (scopeRelative === '..' || scopeRelative.startsWith('..' + path.sep) || path.isAbsolute(scopeRelative)) throw new Error('工作区范围必须包含项目。');
-  const directory = settingsDirectory(appRoot,env), filename = path.join(directory, 'config.json');
-  let config = {};
-  try { config = JSON.parse(await fs.readFile(filename, 'utf8')); if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Invalid configuration'); }
-  catch (error) { if (error.code !== 'ENOENT') throw new Error('现有应用配置无法读取；没有覆盖它。'); }
-  if (config.projectPath && path.relative(config.projectPath,projectPath)!=='') {
-    delete config.usageImports;
-    delete config.outputDirs;
-    delete config.memories;
-  }
+  const directory = settingsDirectory(appRoot,env);
+  const previous=await readSettings(path.join(directory,'config.json'));
+  const config=await savedProjectSettings(directory,projectPath,previous) || (!previous?.projectPath && previous) || {};
   config.projectPath = projectPath; config.scopePath = scopePath;
   config.timezone=values.get('--timezone')||config.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
   try{new Intl.DateTimeFormat('en-US',{timeZone:config.timezone}).format(new Date());}catch{throw new Error('Invalid IANA timezone');}
@@ -64,10 +110,7 @@ async function configure(args, { appRoot = APP_ROOT, env=process.env } = {}) {
   for (const key of ['codex', 'claude', 'imports']) { if (enabled.has('--no-' + key)) config.sources[key] = false; if (enabled.has('--' + key)) config.sources[key] = true; }
   if (enabled.has('--no-ai') || enabled.has('--ai')) config.ai = { ...(config.ai || {}), enabled: enabled.has('--ai') };
   if(!config.ai)config.ai={enabled:false};
-  await fs.mkdir(directory, { recursive: true });
-  const temporary = path.join(directory, 'config.' + require('node:crypto').randomUUID() + '.tmp');
-  try { await fs.writeFile(temporary, JSON.stringify(config, null, 2) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 }); await fs.rename(temporary, filename); }
-  catch (error) { await fs.unlink(temporary).catch(() => {}); throw error; }
+  await selectSettings(directory,config);
   return { configured: true, outputDirectories: config.outputDirs.length, imports: config.usageImports?.length || 0 };
 }
 const NEWS_HELP = [
@@ -77,5 +120,5 @@ const NEWS_HELP = [
   '  --no-news | --news     Disable/enable the expedition radio',
   ''
 ].join('\n');
-module.exports = { configure, settingsDirectory, HELP: HELP + NEWS_HELP };
+module.exports = { configure, settingsDirectory, savedProjectSettings, savedProjectPaths, selectSettings, readSettings, writeSettings, HELP: HELP + NEWS_HELP };
 if (require.main === module) configure(process.argv.slice(2)).then(result => { console.log(result.help || '本机项目配置已保存至 '+path.join(settingsDirectory(),'config.json')+'。运行 npm start 启动深矿。'); }).catch(error => { console.error(error.message); process.exitCode = 1; });

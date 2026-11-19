@@ -44,8 +44,8 @@ details label { display:block; margin:12px 0 5px; }
 input[type=checkbox] { flex:0 0 17px; width:17px; height:17px; margin:2px 0 0; accent-color:#efbf72; }
 .primary { display:block; width:100%; padding:12px 16px; border:0; border-radius:4px; background:#f3c783; color:#262d28; font-weight:700; }
 .primary:not(:disabled):hover { background:#ffda9d; }
-.try-mine { display:inline-flex; align-items:center; min-height:44px; color:#f3c783; text-underline-offset:4px; }
-.try-mine + .foot { margin-top:3px; }
+.try-mine { display:inline-flex; align-items:center; min-height:44px; margin:0 0 12px; color:#f3c783; font-weight:650; text-underline-offset:4px; }
+.intro { margin-bottom:4px; }
 button:disabled,select:disabled { opacity:.57; cursor:default; }
 .foot { margin:20px 0 0; color:#b6c3b9; font-size:13px; }
 #error { color:#ffc1a8; font-size:14px; margin:10px 0 0; }
@@ -57,6 +57,6 @@ button:disabled,select:disabled { opacity:.57; cursor:default; }
   .shaft::after { background:linear-gradient(0deg,#16232680,transparent 45%); }
   .station { align-self:stretch; padding:24px clamp(18px, 7vw, 48px) 32px; }
   h1 { margin-top:18px; }
-  .intro { margin-bottom:17px; }
+  .intro { margin-bottom:2px; }
 }
 

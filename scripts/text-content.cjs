@@ -174,15 +174,7 @@ function prose(text,ext) {
   return {title,summary:summary || (parts?'文中谈到'+parts+'。':'文章以'+quoted(title)+'为题。')};
 }
 
-const headerNames = new Map(Object.entries({
-  date:'日期', month:'月份', time:'时间', year:'年份', city:'城市', region:'区域', location:'地点', country:'国家',
-  product:'商品', category:'类别', name:'名称', title:'标题', quantity:'数量', units:'件数', sales:'销量', revenue:'收入',
-  price:'价格', amount:'金额', temperature:'温度', humidity:'湿度', count:'数量', score:'分数', budget:'预算',
-  cost:'成本', result:'结果', task:'任务', status:'状态', priority:'优先级', deadline:'截止日期', distance:'距离',
-  duration:'时长', artist:'艺术家', album:'专辑', genre:'风格', species:'物种', site:'站点', weight:'重量',
-  ingredient:'食材', calories:'热量', population:'人口', latitude:'纬度', longitude:'经度', level:'等级',
-  model:'模型', tokens:'Token 数', unit:'单位', version:'版本', timestamp:'时间', country_code:'国家代码'
-}));
+const {tableColumn}=require('../dist/item-intro.js');
 const HEADER = /^(?:(?:采样|观测|统计|销售|订单|客户|项目|商品|站点|设备|平均|最高|最低|日均|每月)?(?:日期|时间|城市|省份|区域|地区|地点|名称|类别|产品|数量|销量|销售额|金额|价格|收入|温度|气温|湿度|人数|单位|分数|预算|支出|结果|月份|年份|任务|状态|优先级|版本|截止日期|年龄|科目|成绩|距离|重量|时长|经度|纬度|物种|曲目|专辑|风格|站点|国家|人口|热量|食材)|日付|都市|地域|気温|湿度|数量|売上|価格|金額|品名|商品名|単位)$/;
 function table(text,ext,truncated) {
   const sep=ext==='tsv'?'\t':',';
@@ -210,14 +202,22 @@ function table(text,ext,truncated) {
     // only the recognized unit, never an arbitrary prefix or a row value.
     const measure=/^([\p{Script=Han}]{1,8})(销量|销售额|库存量|销售量|产量|销售收入)$/u.exec(c);
     if(measure)return /^(花束|鲜花|书籍|图书|门票|食品|饮品|服装|家具|水果)$/.test(measure[1])?c:measure[2];
-    return headerNames.get(c.toLowerCase())||
-      headerNames.get(c.toLowerCase().replace(/^(sample|sales|average|monthly|daily|product|order)[ _-]+/,''));
-  }).filter(Boolean);
-  const unique=[...new Set(names)]; if(unique.length<2)return null;
-  const complete=!truncated && data.every(r=>fields(r)?.length===cols.length);
+    return tableColumn(c,'zh-CN')||
+      tableColumn(c.toLowerCase().replace(/^(sample|sales|average|monthly|daily|product|order)[ _-]+/,''),'zh-CN');
+  });
+  const unique=[...new Set(names.filter(Boolean))]; if(unique.length<2)return null;
+  const records=data.map(fields);
+  const complete=!truncated && records.every(row=>row?.length===cols.length);
   const howMany=complete?'共 '+data.length+' 条记录，':'';
   const about=unique.slice(0,4).join('、');
-  return {title:unique.slice(0,2).join('与')+'表',summary:howMany+'每行按'+about+'分栏，可以逐项对照。'};
+  let summary=howMany+'每行按'+about+'分栏，可以逐项对照。';
+  const countColumn=cols.findIndex(column=>['departures','arrivals'].includes(tableColumn(column,'en')));
+  if(complete && records.length>=2 && countColumn>=0 && names.lastIndexOf(names[countColumn])===countColumn &&
+     records.every(row=>/^\d{1,9}$/u.test(row[countColumn])&&!row.some(value=>/^(?:grand total|total|subtotal|合计|总计|小计|合計|小計)$/iu.test(value)))){
+    const total=records.reduce((sum,row)=>sum+Number(row[countColumn]),0);
+    summary+=names[countColumn]+'合计 '+total+'。';
+  }
+  return {title:unique.slice(0,2).join('与')+'表',summary};
 }
 
 function styles(text) {

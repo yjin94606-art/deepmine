@@ -1,7 +1,7 @@
 (function(root,factory){
-  if(typeof module==='object'&&module.exports)module.exports=factory(globalThis);
-  else root.WorkSprites=factory(root);
-})(globalThis,function(root){
+  if(typeof module==='object'&&module.exports)module.exports=factory(globalThis,require('./demo-records.js'));
+  else root.WorkSprites=factory(root,root.DemoRecords);
+})(globalThis,function(root,demo){
   'use strict';
   const imageTypes=new Set(['image/png','image/jpeg','image/webp','image/gif']);
   const byteLimit=8*1024*1024;
@@ -11,7 +11,8 @@
     const url=new URL(source.url,origin);
     if(url.origin!==origin || url.hash)return null;
     if(source.demo){
-      if(url.search || !['/demo-assets/sample-02.png','/demo-assets/garden.png'].includes(url.pathname))return null;
+      const name=url.pathname.split('/').pop();
+      if(url.search || demo.imagePath(name)!==url.pathname)return null;
       return {url,version:null};
     }
     if(url.pathname!=='/api/preview')return null;

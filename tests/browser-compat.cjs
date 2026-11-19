@@ -34,6 +34,60 @@ async function verifyArchiveDateSwitch(page,directory){
   await page.locator('#treasureClose').click();
 }
 
+async function verifyRecordings(browser,scratch){
+  const project=path.join(scratch,'recordings'),folder=path.join(project,'private-folder-name');
+  await fs.mkdir(folder,{recursive:true});
+  const wav=await fs.readFile(path.join(__dirname,'../docs/launch/sample-chime.wav'));
+  // Preserve the WAV container, removing its display title so names come from each file.
+  wav.write('JUNK',wav.indexOf('LIST'));
+  await fs.writeFile(path.join(folder,'Harbor bell.wav'),wav);
+  wav[wav.length-2]^=0x60;
+  await fs.writeFile(path.join(folder,'Buoy alarm.wav'),wav);
+  const app=await require('../scripts/server.cjs').start({projectPath:project,scopePath:project,outputDirs:['.'],
+    dataDirectory:path.join(scratch,'recording-save'),sources:{codex:false,claude:false,git:false,imports:false},quiet:true,port:0});
+  const ctx=await browser.newContext({locale:'en-US',reducedMotion:'reduce'});
+  try{
+    const page=await ctx.newPage();
+    await page.goto('http://127.0.0.1:'+app.port);
+    await page.locator('#paceSelect').selectOption('brisk');
+    await page.locator('#digButton').click();
+    const stage=page.locator('#discoveryStage[open]'),title=stage.locator('[data-stage-record]');
+    await stage.waitFor();
+    const first=await title.innerText();
+    await stage.getByRole('button',{name:'Next',exact:true}).click();
+    await page.waitForFunction(prior=>document.querySelector('[data-stage-record]').textContent!==prior,first);
+    const second=await title.innerText();
+    assert.deepEqual([first,second].sort(),['Buoy alarm','Harbor bell']);
+    await stage.locator('#stageContinue').click();
+    await page.locator('#treasureChest').click();await page.locator('#treasureRanking').click();
+    const list=page.locator('#workdayTitles');
+    assert.equal(await list.getByRole('button').count(),2);
+    assert.doesNotMatch(await list.innerText(),/private-folder|\.wav/i);
+    for(const name of [first,second]){
+      await list.getByRole('button',{name:new RegExp(name)}).click();
+      const detail=page.locator('#detailDialog[open]');
+      assert.equal(await detail.locator('#detailTitle').innerText(),name);
+      await detail.locator('#detailPlayer button').click();
+      const playback=await detail.locator('audio').getAttribute('src');
+      assert.equal(new URL(playback,page.url()).searchParams.get('path'),'private-folder-name/'+name+'.wav');
+      await detail.locator('[data-close="detailDialog"]').click();
+    }
+    await list.getByRole('button',{name:new RegExp(second)}).click();
+    await page.locator('#detailDialog [data-locate]').click();
+    await page.waitForFunction(()=>new URL(location.href).searchParams.has('workVersion'));
+    assert.doesNotMatch(decodeURIComponent(page.url()),/private-folder|\.wav/i);
+    await page.reload();
+    await page.getByRole('button',{name:new RegExp(second)}).first().waitFor({state:'attached'});
+    const original=await app.snapshot(),source=original.outputs.find(row=>row.files.includes('private-folder-name/'+second+'.wav'));
+    const legacy=new URL(page.url());
+    legacy.searchParams.delete('view');
+    legacy.searchParams.set('workVersion',source.id+'|'+source.files[0]);
+    await page.goto(legacy.href);
+    await page.locator('#detailDialog[open]').waitFor();
+    assert.equal(await page.locator('#detailTitle').innerText(),second);
+  }finally{await ctx.close();await new Promise(resolve=>app.server.close(resolve));}
+}
+
 async function verifyBrowser(engine){
   const playwright=require('playwright');
   const browserType=engine==='edge'?playwright.chromium:playwright[engine];
@@ -63,14 +117,19 @@ async function verifyBrowser(engine){
     });
     const page=await context.newPage();
     page.on('pageerror',e=>errors.push(e.message));
+    await page.setViewportSize({width:320,height:568});
     await page.goto(instance.url,{waitUntil:'commit'});
     await page.locator('#folder').waitFor();
+    const sample=page.getByRole('link',{name:'Try a sample mine'});
+    const sampleBounds=await sample.boundingBox();
+    assert.ok(sampleBounds.y>=0 && sampleBounds.y+sampleBounds.height<=568 && sampleBounds.height>=44,'a new visitor can tap the sample before scrolling');
+    assert.equal(await page.evaluate(()=>scrollY),0);
     const privateRequests=[];
     function watchDemo(request){
       if(new URL(request.url()).pathname.startsWith('/api/'))privateRequests.push(request.url());
     }
     page.on('request',watchDemo);
-    await page.getByRole('link',{name:'Try a sample mine'}).click();
+    await sample.click();
     await page.locator('#discoveryStage[open]').waitFor();
     assert.match(await page.locator('#discoveryStage [data-stage-record]').innerText(),/botanist|anime/i);
     assert.match(await page.locator('#stageContent p').innerText(),/hair clip/i);
@@ -78,6 +137,7 @@ async function verifyBrowser(engine){
     await assert.rejects(fs.access(path.join(env.DEEPMINE_DATA_DIR,'config.json')),{code:'ENOENT'});
     await fs.writeFile(path.join(env.DEEPMINE_DATA_DIR,'config.json'),JSON.stringify({fieldNews:{publicEnabled:false}}));
     page.off('request',watchDemo);
+    await page.setViewportSize({width:1024,height:768});
     await page.locator('#chooseAfterFind').click();
     await page.locator('#folder').waitFor();
     await page.locator('#folder').fill(scratch);
@@ -164,9 +224,18 @@ async function verifyBrowser(engine){
     secondTab.on('pageerror',e=>errors.push(e.message));
     await secondTab.goto(game,{waitUntil:'commit'});
     await secondTab.locator(stage).waitFor();
-    await secondTab.locator('#stageContinue').press('Enter');
+    const independent=await browser.newContext({locale:'en-US',reducedMotion:'reduce'});
+    const otherPlayer=await independent.newPage();
+    await otherPlayer.goto(game,{waitUntil:'commit'});
+    await otherPlayer.locator(stage).waitFor();
+    assert.equal(await otherPlayer.locator(title).innerText(),firstFind);
+    const held=(await (await fetch(game+'/api/snapshot')).json()).mining;
+    assert.ok(held.waitingFind.ids.length);
+    assert.equal(held.excavatedDepth,held.waitingFind.depth);
+    await otherPlayer.locator('#stageContinue').press('Enter');
     await returning.locator('#discoveryStage').waitFor({state:'hidden'});
     await secondTab.locator('#discoveryStage').waitFor({state:'hidden'});
+    await independent.close();
     await returning.reload({waitUntil:'commit'});
     await returning.waitForFunction(()=>window.DeepmineApp?.getState().ready);
     assert.equal(await returning.locator(stage).count(),0);
@@ -186,6 +255,22 @@ async function verifyBrowser(engine){
     await secondTab.waitForFunction(()=>window.DeepmineApp?.getState().ready);
     assert.equal(await secondTab.locator('#detailDialog[open]').count(),0);
     await verifyArchiveDateSwitch(returning,path.join(env.DEEPMINE_DATA_DIR,'treasure',snapshot.project.id));
+
+    const secondProject=path.join(scratch,'Sound Studio');
+    await fs.mkdir(secondProject);
+    await returning.locator('#settingsButton').click();
+    await returning.getByRole('button',{name:'Switch project'}).click();
+    await returning.locator('#projects option').first().waitFor({state:'attached'});
+    await returning.locator('#manual > summary').click();
+    await returning.locator('#folder').fill(secondProject);
+    await returning.locator('#enter').click();
+    await returning.waitForFunction(()=>document.querySelector('#projectName')?.textContent==='Sound Studio');
+    await returning.locator('#projectName').click();
+    await returning.locator('#projects').selectOption({label:'海岸 Studio'});
+    await returning.getByRole('button',{name:'Resume this mine'}).click();
+    await returning.waitForFunction(()=>document.querySelector('#projectName')?.textContent==='海岸 Studio');
+    assert.equal(new URL(returning.url()).origin,game);
+    assert.equal(await returning.locator('#paceSelect').inputValue(),'brisk');
 
     // A narrow touch viewport, OS-level reduced motion and the fallback image decoder.
     const mobile=await browser.newContext({locale:'ja-JP',viewport:{width:360,height:740},hasTouch:true,reducedMotion:'reduce'});
@@ -216,6 +301,7 @@ async function verifyBrowser(engine){
     assert.deepEqual(newsRequests,[],'unopened news must stay offline across digging, reload and tabs');
     assert.deepEqual(boardRequests,[],'viewing the survey must never contact the shared leaderboard');
     assert.deepEqual(errors,[]);
+    await verifyRecordings(browser,scratch);
     console.log(engine+' '+browser.version()+' passed welcome, live work, reopen, multi-tab continue, keyboard, touch, language and image fallback');
   }finally{
     try{await browser?.close();}finally{

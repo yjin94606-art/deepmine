@@ -42,10 +42,50 @@
     const parallel=lang===1 && /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+\s+([A-Z][a-zA-Z]+(?:\s+v\d[\w.-]*)?)$/u.exec(title);
     return parallel?parallel[1]:'';
   }
+  function namedWork(filename,lang,type){
+    // Use a short human-readable basename only when the work has no title.
+    // Never promote directories, numbered exports, hashes or machine identifiers.
+    const name=filename.replace(/\.[^.]+$/u,'').replace(/[-_]+/gu,' ').trim();
+    if(!name || name.length>64 || !/^[\p{L}\p{M}\d ’'-]+$/u.test(name) ||
+      /\d{4,}|[a-f\d]{8,}|\b(?:api key|password|keyring|token|bearer|secret|sk|gh[pousr]|github pat)\b/iu.test(name) ||
+      /^(?:img|dsc|rec|audio|video|file|output|export|recording|untitled|track|clip|sample|image|document|test|final|draft)(?:\s*\d+)?$/iu.test(name))return '';
+    if(fitsLanguage(name,lang,true)&&(lang!==1||/\p{L}{2,}\s+\p{L}{2,}/u.test(name)))return name;
+    if(type==='audio'){
+      if(/\b(?:alarms?|sirens?)\b|警报|警報/iu.test(name))return ['警报声','Alarm','警報音'][lang];
+      if(/\b(?:bells?|chimes?)\b|钟声|铃声|鐘の音/iu.test(name))return ['钟铃声','Bell chime','鐘の音'][lang];
+    }
+    return '';
+  }
   function descriptionInLanguage(summary,lang){
     const lines=String(summary||'').split(/(?<=[。！？])|(?<=[.!?])\s+|\s+[·|]\s+|\n/u).map(line=>line.trim()).filter(Boolean);
     const usable=lines.filter(line=>fitsLanguage(line,lang));
     return lines.length===usable.length?summary:usable.join(lang===1?' ':'');
+  }
+  function tableDescription(summary,lang){
+    const table=/^(?:共 (\d+) 条记录，)?每行按([^，。\n]{1,100})分栏，可以逐项对照。(?:([^，。\s]{1,12})合计 (\d+)。)?$/u.exec(summary);
+    if(table){
+      const language=['zh-CN','en','ja'][lang];
+      const labels=table[2].split('、').map(field=>Intro.tableColumn(field,language)).filter(Boolean);
+      if(labels.length){
+        const metric=['出发班次','到达班次'].includes(table[3])&&Intro.tableColumn(table[3],language);
+        if(metric&&table[4]&&table[1]&&labels.length===2&&labels.includes(metric)){
+          const dimension=labels.find(label=>label!==metric);
+          if(dimension)return [
+            '按'+dimension+'记录了 '+table[1]+' 行，'+metric+'合计 '+table[4]+' 班。',
+            'The table lists '+table[4]+' '+metric+' by '+dimension+' across '+table[1]+' rows.',
+            dimension+'別の'+metric+'を'+table[1]+'行にまとめ、合計は'+table[4]+'便です。'
+          ][lang];
+        }
+        if(lang===0)return summary;
+        const list=new Intl.ListFormat(language).format(labels);
+        const count=table[1];
+        const lead=lang===1 ? (count?'The table has '+count+(count==='1'?' row':' rows')+' with columns for ':'The columns include ')+list+'.' :
+          list+'を記録した'+(count?count+'行の':'')+'表です。';
+        if(metric&&table[4])return lead+(lang===1?' The '+metric+' column adds up to '+table[4]+'.':metric+'の合計は'+table[4]+'です。');
+        return lead;
+      }
+    }
+    return '';
   }
   function measuredDescription(summary,lang){
     const counts=[
@@ -145,7 +185,7 @@
     if (snapshot.mode==='demo') {
       if (!Demo.describeSample(item,snapshot,'en')) return null;
       const asset = path.endsWith('/sample-02.png') ? 'sample-02.png' : path.endsWith('/Garden-illustration.png') ? 'garden.png' : null;
-      return asset ? {path,url:'/demo-assets/'+asset,key:'demo/'+asset,demo:true} : null;
+      return asset ? {path,url:Demo.imagePath(asset),key:'demo/'+asset,demo:true} : null;
     }
     const params = new URLSearchParams({path});
     if (record) params.set('fingerprint',record.fingerprint);
@@ -183,7 +223,7 @@
     const evidence = commit ? [commit] : [];
     const base = sample || Intro.describe({...individual,evidenceIds:evidence.map(c=>c.hash)},
       {outputs:record && !(media && record.sourceId==='local-files')?[record]:[],days:[{date:item.date,evidence}],memories:(item.memoryIds||[]).map(id=>db.memories.get(id)).filter(Boolean)},locale,{omitUnknown:true});
-    const filename = path?.split('/').pop() || '';
+    const filename = path?.split(/[/\\]/u).pop() || '';
     const stem = filename.replace(/\.[^.]+$/,'').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[-_]+/g,' ').trim();
     const filenameFallback = path && (base.title === stem || base.title === filename || base.title === Array.from(stem).slice(0,63).join('').trimEnd()+'…');
     const receiptTitle = trace?.title?.trim();
@@ -215,6 +255,7 @@
       if (gitNote) summary=gitNote[0];
     }
     if (!sample && !reading && /\.(?:png|jpe?g|gif|webp|svg|py|js|tsx?|md|pdf|html|csv|xlsx|pptx|wav|mp4)$/i.test(title)) title=labels[i];
+    if(!sample && title===labels[i] && (media||/\s/u.test(filename)))title=namedWork(filename,i,type)||title;
     const demo = !!(sample && member);
     const timestamp = trace?.producedAt || delivery?.deliveredAt || record?.timestamp || commit?.timestamp || db.memories.get(item.memoryIds?.[0])?.timestamp;
     const when = timestamp ? new Intl.DateTimeFormat(locale,{timeZone:snapshot.timezone,year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(timestamp)) : '';
@@ -264,12 +305,14 @@
     if(copy.demo||item.memoryIds?.length)return copy;
     const lang=languageIndex(locale),originalTitle=copy.title,originalSummary=copy.summary;
     const localTitle=titleInLanguage(originalTitle,lang);
-    const summary=descriptionInLanguage(originalSummary,lang);
+    const summary=(copy.type==='table'&&tableDescription(originalSummary,lang))||descriptionInLanguage(originalSummary,lang);
     if(localTitle===originalTitle&&summary===originalSummary)return copy;
     const src=member||works(item,snapshot)[0];
     const role=Intro.describe({visualType:copy.type,paths:src?[src.path]:[]},{},locale,{omitUnknown:true});
     const typeTitle=(types[copy.type]||types.file)[lang];
-    copy.title=localTitle || titleInLanguage(role.title,lang) || typeTitle;
+    const baseName=src?.path?.split(/[/\\]/u).pop()||'';
+    const localName=/\s/u.test(baseName)&&namedWork(baseName,lang,copy.type);
+    copy.title=localTitle || localName || titleInLanguage(role.title,lang) || typeTitle;
     const topics=subjects()?.topics(originalTitle,lang)||[];
     const topicList=topics.length?new Intl.ListFormat(locale).format(topics):'';
     const subjectNote=topicList && ['这件作品的题目提到了'+topicList+'。','Its original title mentions '+topicList+'.','元の題名には'+topicList+'が出てきます。'][lang];
