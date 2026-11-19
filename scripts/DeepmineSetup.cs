@@ -4,7 +4,10 @@ using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -19,12 +22,25 @@ internal static class DeepmineSetup {
     [STAThread]
     private static int Main(string[] args) {
         if (args.Length == 2 && args[0] == "--verify-install") {
+            string root = null, step = "Preparing the isolated install";
             try {
-                var root = Path.GetFullPath(args[1]);
+                root = Path.GetFullPath(args[1]);
+                Directory.CreateDirectory(root);
+                step = "Extracting or verifying the portable ZIP";
                 var app = Install(Path.Combine(root, "Programs"), null);
-                CreateShortcut(Path.Combine(root, "Menu"), app);
+                step = "Saving the Start menu shortcut";
+                var shortcut = CreateShortcut(Path.Combine(root, "Menu"), app);
+                step = "Reading the saved Start menu shortcut";
+                File.WriteAllLines(Path.Combine(root, "verified-shortcut.txt"), ReadShortcut(shortcut), new UTF8Encoding(false));
                 return 0;
-            } catch (Exception error) { Console.Error.WriteLine(error.Message); return 1; }
+            } catch (Exception error) {
+                string diagnostic = step + Environment.NewLine + error.ToString();
+                try {
+                    if (root != null) File.WriteAllText(Path.Combine(root, "verify-install-error.txt"), diagnostic, new UTF8Encoding(false));
+                } catch (IOException) {} catch (UnauthorizedAccessException) {}
+                Console.Error.WriteLine(diagnostic);
+                return 1;
+            }
         }
         if (args.Length != 0) return 2;
         Application.EnableVisualStyles();
@@ -109,15 +125,58 @@ internal static class DeepmineSetup {
             }
         }
     }
-    private static void CreateShortcut(string menu, string app) {
+    [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+    private class ShellLink {}
+
+    // IShellLinkW vtable order from shobjidl_core.h. Windows filenames are UTF-16 on all system locales.
+    [ComImport, Guid("000214F9-0000-0000-C000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellLinkW {
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size, IntPtr findData, uint flags);
+        void GetIDList(out IntPtr pidl);
+        void SetIDList(IntPtr pidl);
+        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder description, int size);
+        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string description);
+        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size);
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string path);
+        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder arguments, int size);
+        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string arguments);
+        void GetHotkey(out short hotkey);
+        void SetHotkey(short hotkey);
+        void GetShowCmd(out int command);
+        void SetShowCmd(int command);
+        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size, out int index);
+        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int index);
+        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
+        void Resolve(IntPtr window, uint flags);
+        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string path);
+    }
+
+    private static string CreateShortcut(string menu, string app) {
         Directory.CreateDirectory(menu);
-        dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell", true));
-        dynamic shortcut = shell.CreateShortcut(Path.Combine(menu, "Deepmine.lnk"));
-        shortcut.TargetPath = Node(app);
-        shortcut.Arguments = Arguments(app);
-        shortcut.WorkingDirectory = app;
-        shortcut.Description = "Open your local Deepmine";
-        shortcut.IconLocation = Path.Combine(app, @"Deepmine\dist\mine-icon.ico") + ",0";
-        shortcut.Save();
+        string file = Path.Combine(menu, "Deepmine.lnk");
+        var link = (IShellLinkW)new ShellLink();
+        try {
+            link.SetPath(Node(app));
+            link.SetArguments(Arguments(app));
+            link.SetWorkingDirectory(app);
+            link.SetDescription("Open your local Deepmine");
+            link.SetIconLocation(Path.Combine(app, @"Deepmine\dist\mine-icon.ico"), 0);
+            ((IPersistFile)link).Save(file, true);
+        } finally { Marshal.FinalReleaseComObject(link); }
+        return file;
+    }
+
+    private static string[] ReadShortcut(string file) {
+        var link = (IShellLinkW)new ShellLink();
+        try {
+            ((IPersistFile)link).Load(file, 0);
+            var node = new StringBuilder(260);
+            var arguments = new StringBuilder(32768);
+            var cwd = new StringBuilder(32768);
+            link.GetPath(node, node.Capacity, IntPtr.Zero, 0);
+            link.GetArguments(arguments, arguments.Capacity);
+            link.GetWorkingDirectory(cwd, cwd.Capacity);
+            return new string[] { node.ToString(), arguments.ToString(), cwd.ToString() };
+        } finally { Marshal.FinalReleaseComObject(link); }
     }
 }

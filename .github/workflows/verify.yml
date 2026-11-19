@@ -59,8 +59,11 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
-      - name: Build and launch the Windows x64 package with its bundled runtime
-        if: matrix.os == 'windows-latest' && matrix.node == 24 && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+      - name: Build and verify the Windows x64 portable package and offline installer
+        if: >-
+          matrix.os == 'windows-latest' && matrix.node == 24 &&
+          ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
         shell: pwsh
         run: |
           $releaseDir = Join-Path $env:RUNNER_TEMP 'deepmine-release'

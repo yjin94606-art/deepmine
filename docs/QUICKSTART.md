@@ -4,7 +4,7 @@
 
 ## Open the game
 
-- **Windows x64.** [Download the offline installer](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64-setup.exe) and open it. The game opens in your browser. Next time, launch **Deepmine** from Start. The [portable ZIP](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.0/deepmine-v1.1.0-windows-x64.zip) also includes Node.js. Extract it and open **Open Deepmine.cmd**.
+- **Windows x64.** [Download the offline installer](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-windows-x64-setup.exe) and open it. The game opens in your browser. Next time, launch **Deepmine** from Start. The [portable ZIP](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-windows-x64.zip) also includes Node.js. Extract it and open **Open Deepmine.cmd**.
 - **macOS.** Install Node.js 20 or newer, extract the source ZIP, then double-click **Open Deepmine.command**.
 - **Linux.** Install Node.js 20 or newer, extract the source ZIP, then run `sh open-deepmine.sh` in the extracted folder.
 

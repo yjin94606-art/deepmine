@@ -1,6 +1,5 @@
 """Build the offline, current-user Windows installer using the built-in .NET Framework compiler."""
 import argparse
-import json
 import mmap
 import os
 from pathlib import Path
@@ -50,19 +49,17 @@ def main():
                         str(release.ROOT / "scripts/DeepmineSetup.cs")], check=True)
         verify_payload(target, portable)
         if args.verify:
-            isolated = build / "Fresh user 用户"
+            isolated = build / "Fresh user 用户 🌱"
             for _ in range(2):
-                subprocess.run([str(target), "--verify-install", str(isolated)], check=True, timeout=120)
-            link = isolated / "Menu/Deepmine.lnk"
+                result = subprocess.run([str(target), "--verify-install", str(isolated)], capture_output=True, timeout=120)
+                if result.returncode:
+                    log = isolated / "verify-install-error.txt"
+                    diagnostic = log.read_text(encoding="utf8") if log.is_file() else result.stderr.decode("utf8", errors="replace")
+                    raise RuntimeError(f"Isolated install exited {result.returncode}: {diagnostic or 'no process diagnostic'}")
+            release.require((isolated / "Menu/Deepmine.lnk").is_file(), "Missing Start menu shortcut")
             app = isolated / "Programs/Deepmine" / release.VERSION
-            # Resolve the same Start menu shortcut Explorer would invoke.
-            ps = Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
-            read_link = "$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:DEEPMINE_TEST_LINK);" \
-                        "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false);" \
-                        "ConvertTo-Json @($s.TargetPath,$s.Arguments,$s.WorkingDirectory) -Compress"
-            shortcut = json.loads(subprocess.check_output([str(ps), "-NoProfile", "-NonInteractive", "-Command", read_link],
-                                  env={**os.environ, "DEEPMINE_TEST_LINK": str(link)}, encoding="utf8"))
-            node, script, cwd = shortcut
+            # Verification reopens the .lnk through the Unicode Shell link interface.
+            node, script, cwd = (isolated / "verified-shortcut.txt").read_text(encoding="utf8").splitlines()
             release.require(Path(node) == app / "Deepmine/runtime/node.exe" and
                             script == '"' + str(app / "Deepmine/scripts/open-mine.cjs") + '"' and Path(cwd) == app,
                             "Start menu shortcut does not point to the installed launcher")
