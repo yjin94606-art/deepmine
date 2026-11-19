@@ -17,7 +17,7 @@ class ReleaseAssetsTest(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.base = Path(temporary.name)
+        self.base = Path(temporary.name).resolve()
         self.root = self.base / "repo"
         self.out = self.base / "bundles"
         (self.root / "scripts").mkdir(parents=True)
