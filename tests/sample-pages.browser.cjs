@@ -8,12 +8,12 @@ const {chromium}=require('playwright');
 async function verifySample(directory,channel){
   const base='/deepmine/';
   const releases='https://github.com/yjin94606-art/deepmine/releases/latest';
-  const mime={'.js':'application/javascript','.mjs':'application/javascript','.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.mp4':'video/mp4','.vtt':'text/vtt'};
+  const mime={'.js':'application/javascript','.mjs':'application/javascript','.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.mp4':'video/mp4','.vtt':'text/vtt','.srt':'text/plain'};
   const files=new Set();
   for(const entry of await fs.readdir(directory,{withFileTypes:true,recursive:true})){
-    if(entry.isDirectory()){assert.ok(['demo-assets','watch'].includes(entry.name));continue;}
-    assert.ok(entry.isFile());
     const file=path.relative(directory,path.join(entry.parentPath||entry.path,entry.name)).split(path.sep).join('/');
+    if(entry.isDirectory()){assert.ok(['demo-assets','watch','watch/zh'].includes(file));continue;}
+    assert.ok(entry.isFile());
     assert.ok(mime[path.extname(file)],'Unexpected hosted file '+file);
     assert.ok(!/^(welcome|vision|config|\.deepmine)/.test(file),'Unexpected local-only asset '+file);
     files.add(file);
@@ -92,6 +92,24 @@ async function verifySample(directory,channel){
     assert.deepEqual(await page.evaluate(()=>window.samplePolicyErrors),[]);
     await page.getByRole('link',{name:'Play the sample mine'}).click();
     await page.locator('#discoveryStage[open]').waitFor();
+    await page.goto(site+'watch/');
+    await page.getByRole('link',{name:'中文'}).click();
+    assert.equal(page.url(),site+'watch/zh/');
+    assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');
+    assert.equal(await film.getAttribute('preload'),'none');
+    assert.equal(await film.locator('track[srclang="zh-CN"]').getAttribute('src'),'captions.vtt');
+    assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'),new URL('watch/zh/',hosted).href);
+    await page.getByRole('link',{name:'English'}).click();
+    assert.equal(page.url(),site+'watch/');
+    await page.getByRole('link',{name:'中文'}).click();
+    assert.ok(!requested.some(url=>url.endsWith('.mp4')),'Opening a short film page must not download the video.');
+    await page.getByRole('link',{name:'进矿坑试玩'}).click();
+    await page.locator('#discoveryStage[open]').waitFor();
+    assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');
+    assert.match(await page.locator('#stageContent').innerText(),/发夹/);
+    await page.goto(site);
+    await page.locator('#discoveryStage[open]').waitFor();
+    assert.equal(await page.locator('html').getAttribute('lang'),'en','Language links should only affect that visit.');
     assert.deepEqual(missing,[]);
     console.log(files.size+' static files. Verified the playable sample, its share card, the captioned watch page and zero film requests from the game.');
   }finally{

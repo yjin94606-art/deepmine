@@ -1,0 +1,25 @@
+* { box-sizing: border-box }
+body { margin: 0; background: #101f24; color: #fff3dd; font: 1rem/1.5 system-ui, sans-serif }
+main { width: min(100% - 3rem,65rem); min-height: 100svh; margin: auto; padding: 2rem 0; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: clamp(2rem,7vw,7rem) }
+header { max-width: 36rem }
+.brand { display: flex; gap: .65rem; align-items: center; margin: 0 0 2.5rem; font-weight: 700 }
+.brand img { width: 2rem; height: 2rem }
+h1 { margin: 0; font-size: clamp(3.4rem,6.7vw,6rem); line-height: .98; letter-spacing: -.068em; text-wrap: balance }
+h1 span { color: #ffd179 }
+.summary { margin: 1.5rem 0 2rem; color: #cadaD4; max-width: 32rem; font-size: 1.15rem }
+.play { display: inline-block; color: #17221f; background: #ffd179; border-radius: .3rem; padding: .7rem 1.2rem; font-weight: 750; text-decoration: none }
+.play:hover { background: #ffe5af }
+:focus-visible { outline: 3px solid #fff; outline-offset: 4px }
+.note { display: block; color: #c0ceca; font-size: .88rem; margin-top: .65rem }
+video { display: block; width: min(34vw,40svh,25rem); height: auto; aspect-ratio: 9/16; background: #0d2027; border-radius: .36rem }
+@media (max-width: 680px) {
+  main { width: min(100% - 2.5rem,28rem); min-height: auto; padding: 1.2rem 0 2rem; grid-template-columns: 1fr; gap: 1.2rem }
+  .brand { margin-bottom: .85rem }
+  h1 { font-size: clamp(2.4rem,10vw,3.5rem) }
+  .summary { font-size: 1rem; margin: .9rem 0 }
+  .note { display: inline-block; margin: 0 0 0 .65rem }
+  video { width: min(100%,32rem,34svh); min-width: min(100%,13.2rem); justify-self: center }
+}
+.brand a { margin-inline-start: auto; font-weight: 500; color: #c0ceca; font-size: .875rem }
+:lang(zh-CN) h1 { letter-spacing: -.025em; line-height: 1.12 }
+:lang(zh-CN) h1 span { white-space: nowrap }

@@ -8,6 +8,7 @@
   const projectSelection=hostedSample?'https://github.com/yjin94606-art/deepmine/releases/latest':sampleVisit?'/':'/projects';
   let timelineKey='',timelineSelected='';
   let override=null;try{override=I.normalize(localStorage.getItem(LOCALE_KEY));}catch(_){}
+  if(hostedSample)override=I.normalize(new URLSearchParams(location.search).get('lang'))||override;
   let locale=I.resolve({override,languages:navigator.languages||[navigator.language]}),snapshot=null,projection=null,findings=[],mode='live',scene=null;
   let mining={earnedDepth:0,excavatedDepth:0,pendingDepth:0,active:false,lastSettledDate:null,revision:0};
   let visual={depth:0,status:'idle',mode:'follow'},viewDate='',activeScope='',generation=0,refreshing=false,failed=false,starting=false,scenePaused=false;

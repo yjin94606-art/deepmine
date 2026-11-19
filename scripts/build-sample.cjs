@@ -47,14 +47,18 @@ async function buildSample(destination,siteUrl='https://yjin94606-art.github.io/
   await fs.writeFile(path.join(destination,'index.html'),shell,{flag:'wx'});
   const watchSource=path.resolve(__dirname,'../docs/launch/watch');
   const watchOutput=path.join(destination,'watch');
-  await fs.mkdir(watchOutput);
-  for(const file of ['deepmine.mp4','poster.jpg','share.jpg','captions.vtt']){
-    await fs.copyFile(path.join(watchSource,file),path.join(watchOutput,file));
-  }
   const baseUrl=siteUrl.endsWith('/')?siteUrl:siteUrl+'/';
-  const watchUrl=new URL('watch/',baseUrl).href.replaceAll('&','&amp;').replaceAll('"','&quot;');
-  const watchHtml=await fs.readFile(path.join(watchSource,'index.html'),'utf8');
-  await fs.writeFile(path.join(watchOutput,'index.html'),watchHtml.replaceAll('{{watchUrl}}',watchUrl),{flag:'wx'});
+  for(const languagePath of ['','zh/']){
+    const input=path.join(watchSource,languagePath),output=path.join(watchOutput,languagePath);
+    await fs.mkdir(output,{recursive:true});
+    const extra=languagePath?['captions.srt']:['watch.css'];
+    for(const file of ['deepmine.mp4','poster.jpg','share.jpg','captions.vtt',...extra]){
+      await fs.copyFile(path.join(input,file),path.join(output,file));
+    }
+    const watchUrl=new URL('watch/'+languagePath,baseUrl).href.replaceAll('&','&amp;').replaceAll('"','&quot;');
+    const watchHtml=await fs.readFile(path.join(input,'index.html'),'utf8');
+    await fs.writeFile(path.join(output,'index.html'),watchHtml.replaceAll('{{watchUrl}}',watchUrl),{flag:'wx'});
+  }
 }
 module.exports={buildSample};
 if(require.main===module){
