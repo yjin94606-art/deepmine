@@ -1,0 +1,115 @@
+name: Verify local collectors and mine
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browsers:
+    name: First visit in ${{ matrix.engine }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, engine: chromium}
+          - {os: ubuntu-latest, engine: firefox}
+          - {os: macos-latest, engine: webkit}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install the test runner outside the application
+        run: npm install --prefix "$RUNNER_TEMP/deepmine-browser" --no-save --no-package-lock --ignore-scripts playwright@1.58.2
+      - name: Install the browser engine
+        run: node "$RUNNER_TEMP/deepmine-browser/node_modules/playwright/cli.js" install --with-deps "${{ matrix.engine }}"
+      - name: Exercise a fresh installation and a narrow touch screen
+        run: NODE_PATH="$RUNNER_TEMP/deepmine-browser/node_modules" node tests/browser-compat.cjs "${{ matrix.engine }}"
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [20, 24]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm run check
+      - run: npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check release inventory and mismatched packages
+        run: python -m unittest discover -s tests -p release_assets_test.py
+      - name: Build the public ZIP and test a fresh Codex installation twice
+        run: python scripts/release.py --output "${{ runner.temp }}/deepmine-release" --verify
+      - name: Keep a downloadable verified ZIP for a tag or manual build
+        if: matrix.os == 'windows-latest' && matrix.node == 24 && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepmine-source
+          path: ${{ runner.temp }}/deepmine-release/deepmine-*-source.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Build and launch the Windows x64 package with its bundled runtime
+        if: matrix.os == 'windows-latest' && matrix.node == 24 && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:RUNNER_TEMP 'deepmine-release'
+          $sourceZip = Get-Item (Join-Path $releaseDir 'deepmine-*-source.zip')
+          python scripts/windows_bundle.py --source $sourceZip.FullName --output $releaseDir --verify
+      - name: Keep the verified Windows x64 ZIP
+        if: matrix.os == 'windows-latest' && matrix.node == 24 && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepmine-windows-x64
+          path: ${{ runner.temp }}/deepmine-release/deepmine-*-windows-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  draft:
+    needs: [verify, browsers]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: draft-${{ github.ref }}
+      cancel-in-progress: false
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: deepmine-source
+          path: ${{ runner.temp }}/release-pair
+      - uses: actions/download-artifact@v4
+        with:
+          name: deepmine-windows-x64
+          path: ${{ runner.temp }}/release-pair
+      - name: Match the tag, compare both verified payloads, and compute download hashes
+        id: pair
+        run: |
+          python3 scripts/release.py --checksums --tag "$GITHUB_REF_NAME" --output "$RUNNER_TEMP/release-pair"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Attach verified downloads to a draft for maintainer review
+        uses: actions/github-script@v7
+        env:
+          TESTED_COMMIT: ${{ steps.pair.outputs.commit }}
+        with:
+          script: |
+            const {stageDraft} = require('./scripts/release-draft.cjs');
+            const url = await stageDraft({github, repo:context.repo, directory:process.env.RUNNER_TEMP + '/release-pair',
+              tag:process.env.GITHUB_REF_NAME, version:require('./package.json').version, commit:process.env.TESTED_COMMIT});
+            core.info(url);

@@ -1,0 +1,62 @@
+* { box-sizing: border-box; }
+:root { color-scheme: dark; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; background: #162326; color: #f7f0dd; }
+body { margin: 0; }
+main { min-height: 100vh; min-height: 100svh; display: grid; grid-template-columns: minmax(240px, 43fr) minmax(400px, 57fr); }
+.shaft { position: relative; min-width: 0; overflow: hidden; background: #243631; }
+.shaft::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 83%, #16232655); pointer-events: none; }
+.shaft canvas { display:block; width:100%; height:100%; position:absolute; inset:0; }
+.station { align-self: center; padding: clamp(32px, 5vw, 76px); }
+.form-area { max-width: 464px; margin-inline: auto; }
+.brand { display: flex; align-items: center; gap: 9px; font: 650 16px/1.1 system-ui, sans-serif; letter-spacing: .02em; color: #f0c271; }
+h1 { margin: 27px 0 12px; font-size: clamp(28px, 3.2vw, 43px); line-height: 1.13; letter-spacing: -.035em; }
+p,label,summary,select,input,button { font-size: 15px; line-height: 1.5; }
+.intro { margin: 0 0 27px; color: #c3cec4; }
+.field-head { display:flex; justify-content:space-between; align-items:center; gap: 16px; margin-bottom: 7px; }
+button, input, select { font-family:inherit; }
+button,summary,select,label:has(input[type=checkbox]) { cursor:pointer; }
+#rescan { padding: 6px 0 6px 8px; color:#cad8ce; background:transparent; border:0; text-decoration:underline; text-underline-offset:3px; }
+select,input[type=text] { display:block; width:100%; max-width:100%; padding:10px 12px; border:1px solid #71847a; border-radius:4px; background:#1f3234; color:#fff8e5; }
+.directory { overflow-wrap:anywhere; color:#b7c7bd; margin:6px 0; font-size:13px; }
+.hint { color:#c7cdc1; margin:7px 0; font-size:14px; }
+.hint:empty,.directory:empty { display:none; }
+details { margin:15px 0; }
+summary { width:fit-content; font-size:14px; color:#d7dfd4; text-underline-offset:3px; }
+summary:hover, #rescan:hover { color:white; }
+details label { display:block; margin:12px 0 5px; }
+.narration-label { display:block; margin:18px 0 6px; }
+.picker-head,.picker-tools { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.picker-head { margin-top:10px; }
+.picker-head label { margin:0; }
+#browse,.picker-tools button,#useFolder,#pickerChildren button { padding:6px 0; color:#d7dfd4; background:none; border:0; text-align:start; }
+#browse,.picker-tools button,#useFolder { text-decoration:underline; text-underline-offset:3px; }
+#picker { margin:10px 0; }
+#pickerChildren { max-height:10rem; overflow-y:auto; }
+#pickerChildren button { display:block; width:100%; overflow-wrap:anywhere; padding:5px 8px; }
+#pickerChildren button::before { content:'›'; margin-inline-end:8px; }
+#pickerChildren button:hover,#pickerChildren button:focus-visible { background:#243d3b; outline-offset:-2px; }
+#useFolder { color:#f3c783; font-weight:600; }
+#pickerDrives { margin:5px 0; }
+.drive-jump { display:flex; flex-wrap:wrap; align-items:center; gap:9px; margin:6px 0; }
+.drive-jump label { margin:0; }
+.drive-jump select { width:auto; padding:4px 6px; }
+#openDrive { color:#d7dfd4; background:transparent; border:0; padding:6px; text-decoration:underline; text-underline-offset:3px; }
+.memory { margin:22px 0 18px; display:flex; align-items:flex-start; gap:9px; color:#d5ded4; font-size:14px; }
+input[type=checkbox] { flex:0 0 17px; width:17px; height:17px; margin:2px 0 0; accent-color:#efbf72; }
+.primary { display:block; width:100%; padding:12px 16px; border:0; border-radius:4px; background:#f3c783; color:#262d28; font-weight:700; }
+.primary:not(:disabled):hover { background:#ffda9d; }
+.try-mine { display:inline-flex; align-items:center; min-height:44px; color:#f3c783; text-underline-offset:4px; }
+.try-mine + .foot { margin-top:3px; }
+button:disabled,select:disabled { opacity:.57; cursor:default; }
+.foot { margin:20px 0 0; color:#b6c3b9; font-size:13px; }
+#error { color:#ffc1a8; font-size:14px; margin:10px 0 0; }
+:focus-visible { outline:2px solid #ffe0a1; outline-offset:3px; }
+[hidden] { display:none !important; }
+@media (max-width:700px) {
+  main { display:flex; flex-direction:column; }
+  .shaft { height: clamp(80px,19vh,150px); flex:none; }
+  .shaft::after { background:linear-gradient(0deg,#16232680,transparent 45%); }
+  .station { align-self:stretch; padding:24px clamp(18px, 7vw, 48px) 32px; }
+  h1 { margin-top:18px; }
+  .intro { margin-bottom:17px; }
+}
+

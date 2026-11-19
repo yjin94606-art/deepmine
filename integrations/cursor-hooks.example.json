@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "node \"C:/path/to/deepmine/integrations/editor-hook.cjs\"",
+        "timeout": 5
+      }
+    ]
+  }
+}

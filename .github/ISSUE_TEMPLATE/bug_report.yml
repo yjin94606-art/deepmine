@@ -1,0 +1,27 @@
+name: Bug report
+description: Report a reproducible problem with setup, syncing or the mine.
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Use a small invented project or the built-in demo.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Version, operating system and browser
+      placeholder: e.g. v1.0.0, Windows 11, Firefox
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Optional launcher diagnostics
+      description: Use the launcher's --diagnostics output. Keep paths, chat logs, keys and project files private.
+      render: json

@@ -1,0 +1,23 @@
+.treasure-dock{position:fixed;z-index:3;right:max(21px,env(safe-area-inset-right));bottom:max(66px,calc(env(safe-area-inset-bottom) + 56px));text-align:right}
+#treasureChest{position:relative;min-width:48px;min-height:44px;padding:2px 4px;display:inline-grid;place-content:center;background:transparent;border:0;cursor:pointer;filter:drop-shadow(0 3px 2px #0b1a23)}
+#treasureChest canvas{width:42px;height:36px;image-rendering:pixelated}
+#treasureChest[hidden]{display:none}
+#treasureChest.ready:after{content:'';position:absolute;right:1px;top:3px;width:6px;height:6px;background:#fff0a0;box-shadow:-2px 1px #b37b56}
+.treasure-drop{position:fixed;z-index:6;right:var(--map-right,25px);bottom:var(--map-bottom,83px);width:64px;height:42px;image-rendering:pixelated;pointer-events:none;animation:treasure-emerge 1.65s both}
+@keyframes treasure-emerge{0%{transform:translate(-27vw,-23vh) scale(.15) rotate(-25deg);opacity:0}18%{transform:translate(-28vw,-30vh) scale(1.25) rotate(8deg);opacity:1}53%{transform:translate(-28vw,-29vh) scale(1.25) rotate(-5deg);opacity:1}91%{transform:translate(0,-3px) scale(.51) rotate(8deg);opacity:1}100%{transform:scale(.2);opacity:0}}
+#treasureDialog{width:min(378px,calc(100vw - 34px));padding:18px 20px 20px;box-sizing:border-box;color:#f3f0dd;background:rgba(19,34,41,.96);text-shadow:none}
+#treasureDialog h2{margin:0;font-size:1.35rem}
+.treasure-page{position:relative;padding:0 0 14px}
+.treasure-map{width:100%;height:74px;object-fit:contain;image-rendering:pixelated;display:block;margin:0 auto 8px}
+.treasure-caption{display:block;font-size:.75rem;color:#cfbc9f}
+.treasure-page h3{font-size:1.2rem;margin:5px 0;overflow-wrap:anywhere}
+.treasure-page p,.treasure-page details{margin:7px 0;line-height:1.5}
+.treasure-page summary{cursor:pointer;color:#b5c5c5;font-size:.85rem}
+.treasure-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:10px}
+.treasure-actions button,.treasure-actions a,#treasureRanking,.treasure-entry{min-height:34px;color:#fff0bf;text-decoration:underline;text-underline-offset:4px}
+.treasure-entries{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.treasure-entry{text-align:left;overflow-wrap:anywhere;font-size:.85rem}
+.treasure-contents h3{font-size:.85rem;margin:12px 0 4px;color:#c0d2c9}
+#treasureRanking{margin-top:8px}
+@media(max-width:640px){.treasure-dock{right:12px;bottom:max(57px,calc(env(safe-area-inset-bottom) + 49px))}#treasureDialog{right:8px;top:15px;max-height:calc(100dvh - 30px)}}
+@media(prefers-reduced-motion:reduce){.treasure-drop{display:none}}

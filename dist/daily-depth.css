@@ -1,0 +1,57 @@
+#depthBoard {
+  --brass: #f0ca82;
+  --paper: #f4efdf;
+  --secondary: #b2c2bc;
+  box-sizing: border-box;
+  width: min(540px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100vh - 28px);
+  max-height: calc(100dvh - 28px);
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  padding: 18px 22px;
+  color: var(--paper);
+  background: linear-gradient(155deg, #253738, #14282e 50%, #17272d);
+  box-shadow: 0 16px 64px #04101780;
+  text-shadow: none;
+}
+#depthBoard::backdrop { background: #07172087; }
+#depthBoard .panel-head { margin: 0; align-items: center; }
+#depthBoard .panel-head h2 { margin: 0; color: var(--paper); font-size: 20px; }
+#depthBoard #boardClose { min-width: 36px; min-height: 36px; font-size: 1.35rem; }
+.survey-reading { display: flex; align-items: center; gap: 12px; padding: 4px 0 12px; }
+.survey-reading canvas { width: 32px; height: 36px; image-rendering: pixelated; }
+.survey-reading > div { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0 10px; }
+.survey-reading small { grid-column: 1 / -1; color: var(--secondary); font-size: 12px; }
+.survey-reading strong { font-size: 1.65rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+#depthBoard .survey-reading p { margin: 0; font-size: .73rem; color: var(--brass); }
+#depthBoard #stampBook { margin: 12px 0 0; color: var(--secondary); font-size: .9rem; }
+#depthBoard #stampBook summary { width: fit-content; cursor: pointer; padding: 5px 0; }
+#depthBoard #stampDays { max-height: 9rem; overflow: auto; margin: 4px 0; padding-left: 1.4rem; font-variant-numeric: tabular-nums; }
+#depthBoard #boardHeading { margin: 4px 0 8px; color: var(--paper); font-size: 1rem; }
+.survey-section { margin: 0; }
+#boardSurveyScene { display: block; width: 100%; height: auto; image-rendering: pixelated; background: #253e4a; }
+#surveyMilestone { color: var(--paper); font-size: .9rem; padding-top: 9px; }
+#depthBoard #surveyPrevious { color: #efbc95; font-size: .85rem; margin: 6px 0 0; }
+#surveyPrevious::before { content: ''; display: inline-block; width: 7px; height: 7px; background: #edb585; margin-right: 6px; }
+#depthBoard #boardState { color: var(--secondary); font-size: .86rem; }
+#depthBoard #boardState:empty { display: none; }
+.survey-award { position: fixed; z-index: 6; right: 1rem; bottom: 5.8rem; pointer-events: none; background: #1d3038; color: #f0d695; padding: .4rem .65rem; font-size: .85rem; }
+@media (max-width: 600px) {
+  #depthBoard { padding: 12px 14px; scrollbar-gutter: auto; }
+  #depthBoard #boardClose { min-height: 44px; }
+  #depthBoard #boardClose { min-width: 44px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .survey-award { animation: survey-arrive .4s ease-out; }
+  @keyframes survey-arrive { from { transform: translateY(.55rem); opacity: 0; } }
+}
+#surveyWorkday { margin: 10px 0 14px; }
+.workday-head { display:flex; flex-wrap:wrap; gap:2px 14px; align-items:baseline; }
+#depthBoard .workday-head h3 { margin:0; color:var(--paper); font-size:1rem; }
+#workdayDate { color:var(--secondary); font-size:.82rem; }
+#depthBoard dl.workday-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:.7rem 0; gap:8px; }
+#depthBoard .workday-values > div { min-width:0; display:grid; grid-template-rows:subgrid; grid-row:span 2; row-gap:2px; align-content:start; }
+#depthBoard .workday-values dt { color:var(--secondary); font-size:.85rem; text-align:start; line-height:1.25; }
+#depthBoard .workday-values dd { color:var(--paper); margin:0; text-align:start; font-size:clamp(.95rem,4vw,1.25rem); overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+#workdayTitles { margin:0; padding:0 0 0 1.2rem; color:#c2d9ce; overflow-wrap:anywhere; font-size:.88rem; }

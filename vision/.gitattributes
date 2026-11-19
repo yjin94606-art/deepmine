@@ -1,0 +1,7 @@
+# Keep the distributed bytes identical to the hashes in README.md on every OS.
+*.onnx -text
+*.wasm -text
+*.f32 -text
+*.json -text
+*.mjs -text
+*.txt -text

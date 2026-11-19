@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Deepmine 1.0 — English press kit</title>
+  <style>
+    :root { color-scheme:dark; background:#112025; color:#f6efe1; font:16px/1.6 "Segoe UI",Helvetica,Arial,sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; }
+    header,main,footer { width:min(1060px,92%); margin-inline:auto; }
+    header,nav,.links { display:flex; flex-wrap:wrap; align-items:baseline; gap:.55rem 1.35rem; }
+    header { justify-content:space-between; padding:1.3rem 0; }
+    h1,h2,h3,p,figure { margin:0; }
+    h1 { font-size:1.2rem; letter-spacing:.01em; }
+    h2 { font-size:clamp(1.55rem,3.4vw,2.4rem); line-height:1.12; margin-bottom:.5rem; }
+    h3 { font-size:1.05rem; margin-bottom:.2rem; }
+    p { max-width:66ch; }
+    a { color:#f4ce87; text-underline-offset:.2em; }
+    a:hover { color:#fff2d8; }
+    a:focus-visible { outline:2px solid #f4ce87; outline-offset:4px; }
+    img { display:block; width:100%; height:auto; }
+    .cover { aspect-ratio:2/1; }
+    section { margin-block:clamp(2rem,6vw,4rem); }
+    .intro,figcaption,footer { color:#c0cfc9; }
+    .intro { margin-bottom:1.15rem; }
+    #gameplay { display:grid; grid-template-columns:minmax(180px,1fr) minmax(0,2.25fr); align-items:center; gap:clamp(1rem,4vw,3.4rem); }
+    .stills { display:grid; align-items:start; grid-template-columns:1fr 1fr; gap:1.4rem; }
+    .stills picture { display:block; aspect-ratio:8/5; background:#152529; }
+    .stills picture img { width:100%; height:100%; object-fit:contain; }
+    figcaption { padding:.55rem 0 0; }
+    footer { border-top:1px solid #364b4c; padding:1rem 0 2rem; }
+    @media (max-width:700px) {
+      #gameplay,.stills { grid-template-columns:minmax(0,1fr); gap:1.15rem; }
+      #gameplay .intro { margin-bottom:0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Deepmine 1.0</h1>
+    <nav aria-label="Press kit"><a href="#gameplay">Gameplay</a><a href="#screenshots">Screenshots</a><a href="#release">Release notes</a></nav>
+  </header>
+  <main>
+    <figure><a href="social-en.png" aria-label="Open the full-size English cover"><img class="cover" width="1280" height="640" src="social-en.png" alt="Deepmine cover artwork featuring the yellow-scarfed botanist from the sample mine."></a></figure>
+    <section id="gameplay">
+      <div><h2>The first find</h2>
+        <p class="intro">The rock splits and a botanist in a yellow scarf comes into view. The note with her portrait tells you why it took two revisions to get that tiny leaf into her hair.</p>
+        <a href="digging-loop.gif">Open the gameplay GIF</a>
+      </div>
+      <figure><picture><source media="(prefers-reduced-motion:reduce)" srcset="../demo-portrait-en.png"><img loading="lazy" src="digging-loop.gif" width="960" height="600" alt="The drill stops at the botanist portrait, continues digging, then returns to an earlier day's garden proposal."></picture>
+      <figcaption>Recorded in the fictional mine included with the game.</figcaption></figure>
+    </section>
+    <section id="screenshots"><h2>Inside the mine</h2>
+      <p class="intro">The drill stops for individual finds. The survey log lets you see the whole day's work at once.</p>
+      <div class="stills">
+        <figure><a href="../demo-portrait-en.png"><picture><img loading="lazy" src="../demo-portrait-en.png" width="960" height="600" alt="The greenhouse botanist portrait beside its English discovery note."></picture></a>
+          <figcaption><h3>Discovery</h3>Open the portrait to read the story behind its leaf-shaped hair clip.</figcaption></figure>
+        <figure><a href="personal-survey-en.png"><picture><img loading="lazy" src="personal-survey-en.png" width="880" height="700" alt="The English personal survey log for a sample greenhouse project."></picture></a>
+          <figcaption><h3>Personal survey</h3>A sample greenhouse project recorded 49,600 tokens and two work files. The player dug 141 metres.</figcaption></figure>
+      </div>
+    </section>
+    <section id="release"><h2>Release notes</h2>
+      <p class="intro">Deepmine is a local pixel-art digging game for your AI projects. Recorded usage and work give the drill more ground to cover. When it hits something you made, the drill stops. Scroll back up the shaft to find it again.</p>
+      <div class="links"><a href="release-en.md">Full release notes</a><a href="../QUICKSTART.md">Quick start</a><a href="community.md">Launch copy and captions</a><a href="social-en.png" download>Download the cover</a></div>
+    </section>
+  </main>
+  <footer>Deepmine 1.0.0 · Windows x64 portable and macOS / Linux source downloads</footer>
+</body>
+</html>

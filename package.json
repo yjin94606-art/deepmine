@@ -1,0 +1,36 @@
+{
+  "name": "deepmine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A persistent pixel mine of measured AI usage, real outputs and sourced conversation memories.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/server.cjs",
+    "start": "node scripts/server.cjs",
+    "test": "node scripts/verify.cjs test",
+    "check": "node scripts/verify.cjs check",
+    "setup": "node scripts/setup.cjs",
+    "doctor": "node scripts/doctor.cjs",
+    "record": "node scripts/record.cjs",
+    "connect:codex": "node scripts/connect-codex.cjs",
+    "open": "node scripts/open-mine.cjs",
+    "test:browsers": "node tests/browser-compat.cjs"
+  },
+  "files": [
+    "dist",
+    "vision",
+    "scripts",
+    "integrations",
+    "skills",
+    "tests",
+    "docs",
+    "README.md",
+    ".github/workflows/verify.yml",
+    "Open Deepmine.cmd",
+    "Open Deepmine.command",
+    "open-deepmine.sh"
+  ],
+  "license": "MIT"
+}

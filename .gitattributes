@@ -1,0 +1,15 @@
+# Keep tagged source and launchers consistent across maintainer checkouts.
+* text=auto eol=lf
+*.command text eol=lf
+*.sh text eol=lf
+*.cmd text eol=crlf
+*.png binary
+*.webp binary
+*.webm binary
+*.gif binary
+*.mp4 binary
+*.jpg binary
+*.wav binary
+*.onnx binary
+*.wasm binary
+*.f32 binary

@@ -1,0 +1,60 @@
+/* The expedition remains the stage; evidence lives in the workshop objects. */
+:root{--workshop-dark:#263f48;--workshop-edge:#58442e;--workshop-gold:#f0c66e}
+.mine-stage canvas:not(#expeditionCanvas){position:static;inset:auto;max-width:100%}
+.topbar{background:#4a5b4d;border-color:#283c38;box-shadow:inset 0 2px #73846b}
+.statusbar{background:#344a42;border-color:#243b35}
+.top-project{color:#cad6b0}
+.depth-hud{background:#f6e6ba}
+.atlas-button{position:absolute;z-index:3;left:20px;top:132px;width:136px;height:39px;display:flex;align-items:center;gap:11px;padding:5px 11px;border:2px solid #947041;background:#e9cf91;box-shadow:0 3px #58452d,inset 0 2px #fff0c3;text-align:left;font-size:11px}
+.atlas-button:hover{background:#ffe5a5}.atlas-button b{font:11px var(--mono);margin-left:5px}.atlas-symbol{font-size:23px;line-height:1;color:#52716b}
+.biome-banner{position:absolute;top:19px;left:50%;transform:translateX(-50%);z-index:2;min-width:190px;text-align:center;pointer-events:none;color:#f8eac2;text-shadow:0 2px #142e36}
+.biome-banner>small{display:block;font:10px var(--mono);letter-spacing:1px;color:#b7d6ca;margin-bottom:4px}
+.biome-banner>strong{display:block;font-size:23px;letter-spacing:3px;font-weight:750}
+.biome-banner .motion-bar{position:static;display:inline-flex;transform:none;left:auto;top:auto;margin-top:7px;padding:3px 9px;gap:5px;font-size:9px;background:#1d343dcd;border:1px solid #799281;box-shadow:none}
+.biome-banner .descent-arrow{font-size:12px}
+.daily-artifact{position:absolute;z-index:3;right:20px;top:132px;width:245px;padding:10px 12px 8px;background:#ead6a2;border:3px solid #8a6944;box-shadow:0 3px #493c2c,inset 0 0 0 2px #ffebbb;text-align:left}
+.daily-artifact:hover{background:#f9e4b0}.artifact-kicker{display:block;font-size:9px;color:#886b43;letter-spacing:2px}
+.daily-artifact-main{display:flex;align-items:center;gap:8px}.daily-artifact-main>canvas{width:76px;height:72px;flex-shrink:0;filter:drop-shadow(0 3px #715e4a35)}
+.daily-artifact-main>span{min-width:0}.daily-artifact-main strong{display:block;font-size:14px;line-height:1.45;color:#4f4430}.daily-artifact-main small{display:block;font-size:9px;line-height:1.7;color:#8e734b;margin-top:4px}.daily-artifact-main em{display:block;font-style:normal;font-size:9px;margin-top:4px;color:#557344}
+.daily-artifact.is-pending canvas{opacity:.45;filter:grayscale(.7)}
+.shift-report{background:#f6e6ba}.daily-numbers{margin-bottom:0}
+.dock-kicker{display:block;font-size:8px;letter-spacing:2px;color:#95713f;margin-bottom:1px}
+.expedition-dock{background:#d9b77b}.dock-copy h2{font-size:13px;color:#54452c}
+.discovery-rail{bottom:127px}.map-tools{bottom:130px}.toast{bottom:138px}
+.reveal-banner{position:absolute;left:50%;top:110px;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:7px;min-width:260px;max-width:90%;padding:4px 17px 5px 9px;background:#fff0bf;border:3px solid #c59442;box-shadow:0 4px #533f2b,inset 0 0 0 2px #ffe49b;pointer-events:none}
+.reveal-banner>canvas{width:65px;height:62px;flex-shrink:0}.reveal-banner>span>small{display:block;font-size:8px;letter-spacing:2px;color:#a37b32}.reveal-banner strong{display:block;font-size:17px;color:#5b472c;margin:2px 0}.reveal-banner>span>span{display:block;font-size:9px;color:#88734f}
+.reveal-banner.is-mineral{min-width:210px}.reveal-banner.is-mineral>canvas{width:44px;height:42px}.reveal-banner.is-mineral strong{font-size:14px}
+.drawer-dialog{width:590px;max-width:100vw}.drawer-dialog.wide-dialog{width:660px}
+.artifact-display{position:relative;display:grid;place-items:center;min-height:202px;margin-bottom:20px;background:#334b50;border:3px solid #7c8470;box-shadow:inset 0 0 0 3px #243b43}
+.artifact-display:before,.artifact-display:after{content:"";position:absolute;bottom:32px;width:45%;height:3px;background:#59716a}.artifact-display:before{left:5%}.artifact-display:after{right:5%}
+.artifact-display canvas{position:relative;z-index:1;width:192px;height:182px;max-width:60%;image-rendering:pixelated}
+.recipe-ingredients{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:15px 0}.recipe-ingredient{display:flex;align-items:center;gap:7px;background:#f3dfa9;border:2px solid #c5a36d;padding:6px 10px;font-size:10px}.recipe-ingredient .mineral-icon{width:14px;height:17px}.recipe-ingredient>b{font-family:var(--mono)}
+.recipe-note{font-size:11px;line-height:1.8;color:#7e6949}.recipe-title{font-size:11px;letter-spacing:1px;color:#8b754d;margin-top:25px}
+.artifact-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 24px}
+.artifact-card{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;padding:9px 6px 10px;background:#f1dda8;border:3px solid #b78e52;box-shadow:0 3px #8a653e,inset 0 0 0 2px #fff0c7;text-align:center}
+.artifact-card:hover{background:#fff0c5;transform:translateY(-2px)}.artifact-card canvas{width:96px;height:91px;max-width:100%}.artifact-card strong{font-size:11px;line-height:1.5}.artifact-card small{font-size:9px;color:#93754d}.artifact-card.is-blueprint{background:#e5d8b2;border-color:#b3a47d;box-shadow:0 3px #8e805f}.artifact-card.is-blueprint canvas{filter:brightness(.25) sepia(.2);opacity:.5}.artifact-card.is-blueprint strong{color:#8c805d}
+.catalog-progress{display:flex;align-items:center;gap:10px;padding:11px 13px;background:#e7d6a3;border:2px solid #c1a367;font-size:11px}.catalog-progress b{font:20px var(--mono);color:#5b763e}.catalog-progress>span:last-child{margin-left:auto;font-size:9px;color:#90774a}
+.atlas-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:18px 0 24px}.atlas-entry{overflow:hidden;border:3px solid #8b7955;background:#d7c798}.atlas-entry canvas{display:block;width:100%;height:auto;background:#263d46}.atlas-entry>div{padding:9px 12px}.atlas-entry strong{font-size:12px}.atlas-entry small{float:right;font:9px var(--mono);color:#7e714f}.atlas-entry p{font-size:10px;margin:6px 0 2px;line-height:1.7}
+.recipe-list{display:grid;gap:7px;margin:14px 0}.recipe-list>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-bottom:1px solid #d5bd87;font-size:10px}.recipe-list span{color:#91754d}.recipe-list b{font-size:11px;color:#5e6139}
+.collection-summary{display:flex;gap:9px;flex-wrap:wrap;color:#87724c;font-size:10px}.collection-summary span{padding:5px 8px;background:#ead8a4;border:1px solid #c6ac73}
+@media(max-width:950px){.daily-artifact{width:215px}.daily-artifact-main>canvas{width:65px;height:62px}.daily-artifact-main strong{font-size:12px}.biome-banner{min-width:170px}.biome-banner>strong{font-size:21px}}
+@media(max-width:620px){
+ .depth-hud{top:12px}.shift-report{top:12px}.atlas-button{left:12px;top:120px;width:110px;height:29px;padding:2px 7px;font-size:9px;gap:7px}.atlas-button b{font-size:9px;margin-left:2px}.atlas-symbol{font-size:18px}
+ .biome-banner{top:194px;min-width:160px}.biome-banner>small{font-size:8px;margin-bottom:2px;letter-spacing:0}.biome-banner>strong{font-size:18px;letter-spacing:2px}.biome-banner .motion-bar{font-size:8px;margin-top:4px;padding:2px 6px}
+ .daily-artifact{top:105px;right:12px;width:186px;padding:6px 8px 4px;border-width:2px}.artifact-kicker{font-size:7px;letter-spacing:1px}.daily-artifact-main{gap:5px}.daily-artifact-main>canvas{width:49px;height:47px}.daily-artifact-main strong{font-size:11px}.daily-artifact-main small{font-size:8px;margin-top:1px}.daily-artifact-main em{font-size:7px;margin-top:1px}
+ .dock-copy h2{font-size:10px}.dock-kicker{font-size:7px;letter-spacing:1px}.dock-actions>button{padding-inline:6px}.dock-main{gap:6px}.expedition-dock{padding-top:7px;min-height:91px}.discovery-rail{bottom:113px}.map-tools{bottom:114px}.toast{bottom:117px}
+ .reveal-banner{top:auto;bottom:185px;min-width:230px;padding:3px 12px 4px 5px}.reveal-banner>canvas{width:52px;height:50px}.reveal-banner strong{font-size:13px}.reveal-banner>span>small{font-size:7px}.reveal-banner>span>span{font-size:8px}.reveal-banner.is-mineral{min-width:190px}
+ .drawer-dialog,.drawer-dialog.wide-dialog{width:100vw;padding:20px 16px}.artifact-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.artifact-card canvas{width:100px;height:95px}.artifact-display{min-height:184px}.artifact-display canvas{width:176px;height:167px}.atlas-grid{gap:9px}.atlas-entry>div{padding:7px 8px}.atlas-entry strong{font-size:10px}.atlas-entry small{font-size:8px}.atlas-entry p{font-size:9px}.recipe-list>div{font-size:9px}.recipe-list b{font-size:10px}
+}
+@media(max-width:370px){.daily-artifact{width:174px}.daily-artifact-main strong{font-size:10px}.daily-artifact-main>canvas{width:44px;height:42px}.artifact-kicker{font-size:7px}.dock-copy h2{font-size:9px}.dock-actions>button{font-size:8px;padding-inline:5px}.atlas-button{width:103px}}
+@media(prefers-reduced-motion:no-preference){.reveal-banner{animation:artifact-pop .22s steps(4,end)}@keyframes artifact-pop{from{transform:translate(-50%,8px);opacity:0}to{transform:translate(-50%,0);opacity:1}}}
+
+/* Keep daily stories readable while the shaft remains visible. */
+.artifact-kicker{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.5px}
+.daily-artifact-main small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.daily-artifact-main strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.artifact-story{padding:15px 17px;margin:20px 0 12px;background:#f4e4b9;border-left:4px solid #8ba165}
+.artifact-story h3{font-size:11px;color:#6c8051;margin:0 0 8px;letter-spacing:1px}
+.artifact-story p{font-size:15px;line-height:1.85;margin:0;color:#55472f}
+.artifact-meaning{font-size:11px;line-height:1.8;margin-top:10px;color:#8b754e}
+@media(max-width:620px){.artifact-story p{font-size:14px}.daily-artifact-main small{-webkit-line-clamp:2;line-height:1.5}.daily-artifact{max-height:86px}.artifact-kicker{letter-spacing:0}}

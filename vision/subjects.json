@@ -1,0 +1,442 @@
+[
+  {
+    "id": "anime",
+    "title": [
+      "二次元人物",
+      "Anime character",
+      "アニメ風の人物"
+    ],
+    "summary": [
+      "人物是画面的主角，轮廓和上色带有动漫插画的风格。",
+      "The character is drawn in an anime style.",
+      "アニメ調の線と色で人物が描かれています。"
+    ],
+    "prompts": [
+      "an anime or manga character portrait, Japanese animation",
+      "an anime girl or boy, cel shaded character illustration"
+    ]
+  },
+  {
+    "id": "portrait",
+    "title": [
+      "人物照片",
+      "Portrait photograph",
+      "人物写真"
+    ],
+    "summary": [
+      "这是一张以人物为主体的照片。",
+      "A photograph with a person as its main subject.",
+      "人物を主役にした写真です。"
+    ],
+    "prompts": [
+      "a photograph of a real person, a portrait photo",
+      "a photographic portrait of someone's face"
+    ]
+  },
+  {
+    "id": "character",
+    "title": [
+      "角色插画",
+      "Character illustration",
+      "キャラクターの絵"
+    ],
+    "summary": [
+      "这幅插画描绘了一个角色。",
+      "A drawn character is the subject of this illustration.",
+      "キャラクターを描いたイラストです。"
+    ],
+    "prompts": [
+      "a cartoon character illustration, comic book character design",
+      "concept art of a fictional character"
+    ]
+  },
+  {
+    "id": "landscape",
+    "title": [
+      "自然风景",
+      "Natural landscape",
+      "自然の風景"
+    ],
+    "summary": [
+      "画面的主体是一片自然风景。",
+      "An outdoor landscape fills the frame.",
+      "自然の景色が広がっています。"
+    ],
+    "prompts": [
+      "a landscape photograph of mountains, sky forest or lake",
+      "a scenic landscape painting of nature"
+    ]
+  },
+  {
+    "id": "garden",
+    "title": [
+      "花园景色",
+      "Garden scene",
+      "庭の風景"
+    ],
+    "summary": [
+      "画面里能看到花园里的植物。",
+      "A garden and its plants are the focus.",
+      "庭の草花が描かれています。"
+    ],
+    "prompts": [
+      "a flower garden with flowerbeds and a greenhouse",
+      "an illustration of a landscaped garden or park with a path"
+    ]
+  },
+  {
+    "id": "city",
+    "title": [
+      "城市街景",
+      "City street",
+      "街並み"
+    ],
+    "summary": [
+      "建筑和街道构成了这幅城市场景。",
+      "Buildings and streets make up this city scene.",
+      "建物や通りが並ぶ街の風景です。"
+    ],
+    "prompts": [
+      "a city street lined with buildings, an urban cityscape"
+    ]
+  },
+  {
+    "id": "architecture",
+    "title": [
+      "建筑外观",
+      "Building exterior",
+      "建物の外観"
+    ],
+    "summary": [
+      "画面着重表现建筑的外观。",
+      "The exterior of a building is the focus.",
+      "建物の外観に焦点を当てた画像です。"
+    ],
+    "prompts": [
+      "an architectural rendering or photograph of a building exterior"
+    ]
+  },
+  {
+    "id": "interior",
+    "title": [
+      "室内空间",
+      "Interior scene",
+      "部屋の様子"
+    ],
+    "summary": [
+      "画面展示了一个室内空间。",
+      "An interior space is shown.",
+      "室内の様子が写っています。"
+    ],
+    "prompts": [
+      "a room interior with furniture, interior design"
+    ]
+  },
+  {
+    "id": "animal",
+    "title": [
+      "动物",
+      "Animal picture",
+      "動物の絵や写真"
+    ],
+    "summary": [
+      "这幅画面的主体是动物。",
+      "An animal is the main subject.",
+      "動物を中心にした画像です。"
+    ],
+    "prompts": [
+      "a picture of an animal or pet, a cat dog bird or wild animal"
+    ]
+  },
+  {
+    "id": "food",
+    "title": [
+      "食物",
+      "Food picture",
+      "料理の画像"
+    ],
+    "summary": [
+      "画面以食物为主。",
+      "Food is the main subject of the image.",
+      "食べ物を主役にした画像です。"
+    ],
+    "prompts": [
+      "a photograph of food or a dish, a meal"
+    ]
+  },
+  {
+    "id": "flower",
+    "title": [
+      "花卉植物",
+      "Flowers and plants",
+      "草花"
+    ],
+    "summary": [
+      "画面着重展示植物的形态。",
+      "The image focuses on plants.",
+      "草花の姿が中心です。"
+    ],
+    "prompts": [
+      "a botanical illustration or photograph of a flower or plant close up"
+    ]
+  },
+  {
+    "id": "vehicle",
+    "title": [
+      "交通工具",
+      "Vehicle",
+      "乗り物"
+    ],
+    "summary": [
+      "这是一幅以交通工具为主体的画面。",
+      "A vehicle is the main subject.",
+      "乗り物が中心の画像です。"
+    ],
+    "prompts": [
+      "a vehicle, car, train, bicycle, airplane or boat"
+    ]
+  },
+  {
+    "id": "product",
+    "title": [
+      "产品展示图",
+      "Product image",
+      "製品の画像"
+    ],
+    "summary": [
+      "画面着重展示一个产品的外观。",
+      "A product is presented as the main subject.",
+      "製品の外観を見せる画像です。"
+    ],
+    "prompts": [
+      "a product photograph or three dimensional render of a commercial product on a background"
+    ]
+  },
+  {
+    "id": "game",
+    "title": [
+      "游戏画面",
+      "Game scene",
+      "ゲーム画面"
+    ],
+    "summary": [
+      "这幅图展示了游戏里的场景。",
+      "A scene from a game is visible.",
+      "ゲーム内の場面が描かれています。"
+    ],
+    "prompts": [
+      "a screenshot of a video game with its player interface",
+      "a screenshot of a 2D pixel art mining game with a drill in a cave"
+    ]
+  },
+  {
+    "id": "sprite",
+    "title": [
+      "像素素材",
+      "Pixel art sprites",
+      "ドット絵素材"
+    ],
+    "summary": [
+      "这些像素图形看起来像游戏美术素材。",
+      "The image shows pixel artwork resembling game assets.",
+      "ゲーム素材のようなドット絵です。"
+    ],
+    "prompts": [
+      "a pixel art sprite sheet for a video game",
+      "isolated pixel art game asset sprites"
+    ]
+  },
+  {
+    "id": "interface",
+    "title": [
+      "应用界面",
+      "App interface",
+      "アプリ画面"
+    ],
+    "summary": [
+      "画面展示了一款软件的界面。",
+      "The image shows a software interface.",
+      "ソフトウェアの画面が写っています。"
+    ],
+    "prompts": [
+      "a screenshot of a software application or mobile app interface"
+    ]
+  },
+  {
+    "id": "website",
+    "title": [
+      "网页画面",
+      "Web page screenshot",
+      "ウェブページの画面"
+    ],
+    "summary": [
+      "这幅图展示了网页的布局和内容。",
+      "A web page and its layout are visible.",
+      "ウェブページのレイアウトが見えます。"
+    ],
+    "prompts": [
+      "a screenshot of a website or a web page layout in a browser"
+    ]
+  },
+  {
+    "id": "chart",
+    "title": [
+      "数据图表",
+      "Data chart",
+      "データグラフ"
+    ],
+    "summary": [
+      "这是一张用图形呈现数据的图表。",
+      "Values are presented in a chart.",
+      "数値を図で表したグラフです。"
+    ],
+    "prompts": [
+      "a data visualization, a bar chart, line graph or pie chart"
+    ]
+  },
+  {
+    "id": "diagram",
+    "title": [
+      "示意图",
+      "Diagram",
+      "構成図"
+    ],
+    "summary": [
+      "图中的形状和连接线用来说明关系。",
+      "Shapes and connections illustrate how things relate.",
+      "図形や線で関係を表した図です。"
+    ],
+    "prompts": [
+      "a technical diagram or flowchart with connected boxes and arrows"
+    ]
+  },
+  {
+    "id": "map",
+    "title": [
+      "地图",
+      "Map",
+      "地図"
+    ],
+    "summary": [
+      "画面以地图的形式展示位置。",
+      "Locations are shown on a map.",
+      "場所を示す地図です。"
+    ],
+    "prompts": [
+      "a map showing geography, roads or a floor plan"
+    ]
+  },
+  {
+    "id": "document",
+    "title": [
+      "文字页面",
+      "Page of text",
+      "文章のページ"
+    ],
+    "summary": [
+      "画面的主要内容是一页文字。",
+      "Text fills most of this page.",
+      "文章が中心のページです。"
+    ],
+    "prompts": [
+      "a scanned document or screenshot of a text document page"
+    ]
+  },
+  {
+    "id": "slides",
+    "title": [
+      "演示幻灯片",
+      "Presentation slide",
+      "プレゼン資料"
+    ],
+    "summary": [
+      "这幅图是一页演示画面。",
+      "A slide from a presentation is shown.",
+      "プレゼンのスライドを示しています。"
+    ],
+    "prompts": [
+      "a presentation slide with title and text or images"
+    ]
+  },
+  {
+    "id": "poster",
+    "title": [
+      "海报设计",
+      "Poster design",
+      "ポスター"
+    ],
+    "summary": [
+      "这是以图文排版为主的海报。",
+      "A poster combines imagery and type.",
+      "文字と絵を配置したポスターです。"
+    ],
+    "prompts": [
+      "a graphic design poster with typography and illustration"
+    ]
+  },
+  {
+    "id": "logo",
+    "title": [
+      "标志图案",
+      "Logo mark",
+      "ロゴマーク"
+    ],
+    "summary": [
+      "这幅图的主体是一个标志或图案。",
+      "A logo or graphic mark is the focus.",
+      "ロゴやマークが中心の画像です。"
+    ],
+    "prompts": [
+      "a graphic logo, an isolated brand symbol on a plain background"
+    ]
+  },
+  {
+    "id": "abstract",
+    "title": [
+      "抽象图案",
+      "Abstract artwork",
+      "抽象模様"
+    ],
+    "summary": [
+      "色块和形状构成了这幅抽象画面。",
+      "Colors and shapes form an abstract composition.",
+      "色と形で構成した抽象的な画像です。"
+    ],
+    "prompts": [
+      "abstract art with geometric shapes or a colorful texture"
+    ]
+  },
+  {
+    "id": "code",
+    "title": [
+      "程序画面",
+      "Code screenshot",
+      "コード画面"
+    ],
+    "summary": [
+      "画面里可以看到程序代码。",
+      "Source code is visible on a screen.",
+      "画面にプログラムのコードが並んでいます。"
+    ],
+    "prompts": [
+      "a computer screen displaying source code in a code editor or terminal"
+    ]
+  },
+  {
+    "id": "unrelated",
+    "title": [
+      "图片作品",
+      "Image",
+      "画像"
+    ],
+    "summary": [
+      "这是一张图片。",
+      "An image.",
+      "画像です。"
+    ],
+    "prompts": [
+      "a miscellaneous photograph or image of an ordinary object",
+      "a blank or unclear image with no obvious subject"
+    ]
+  }
+]

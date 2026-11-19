@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#162326">
+  <title>Deepmine</title>
+  <link rel="icon" href="/mine-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/welcome.css">
+  <script defer src="/drill-art.js"></script>
+  <script defer src="/expedition-art.js"></script>
+  <script defer src="/cavern-geology.js"></script>
+  <script defer src="/cavern-lighting.js"></script>
+  <script defer src="/expedition-life.js"></script>
+  <script defer src="/descent-scene.js"></script>
+  <script defer src="/welcome.js"></script>
+</head>
+<body>
+  <main>
+    <div class="shaft" inert aria-hidden="true"><canvas id="mine" tabindex="-1"></canvas></div>
+    <section class="station">
+      <div class="form-area">
+        <div class="brand"><img src="/mine-icon.svg" width="27" height="27" alt=""><span>Deepmine</span></div>
+        <h1 data-copy="heading">Choose your project</h1>
+        <p class="intro" data-copy="intro">Choose a work folder to see its AI usage and the things you create in your mine.</p>
+        <form id="setup">
+          <div class="field-head"><label id="projectLabel" for="projects" data-copy="project">Recent projects</label><button id="rescan" type="button" data-copy="rescan">Scan again</button></div>
+          <select id="projects" aria-describedby="directory" disabled></select>
+          <p id="directory" class="directory" dir="auto"></p>
+          <p id="scanStatus" class="hint" role="status" aria-live="polite"></p>
+          <details id="manual">
+            <summary data-copy="other">Use a different folder</summary>
+            <div class="picker-head"><label for="folder" data-copy="pathLabel">Project folder path</label><button id="browse" type="button" aria-expanded="false" aria-controls="picker" data-copy="browse">Browse folders</button></div>
+            <input id="folder" type="text" aria-describedby="folderHint" spellcheck="false" autocapitalize="none" autocomplete="off" dir="auto">
+            <p id="folderHint" class="hint" data-copy="pathHint">Paste the full path to a Git project or a folder where you save your work.</p>
+            <div id="picker" hidden>
+              <p id="pickerLocation" class="directory" dir="auto" tabindex="-1"></p>
+              <div class="picker-tools">
+                <button id="pickerHome" type="button" data-copy="home">Home folder</button>
+                <button id="pickerParent" type="button" data-copy="parent">Up one level</button>
+              </div>
+              <details id="pickerDrives" hidden>
+                <summary data-copy="otherDrive">Other drives</summary>
+                <div class="drive-jump">
+                  <label for="driveLetter" data-copy="driveLetter">Drive letter</label>
+                  <select id="driveLetter"><option value="">—</option></select>
+                  <button id="openDrive" type="button" disabled data-copy="openDrive">Open drive</button>
+                </div>
+              </details>
+              <div id="pickerChildren"></div>
+              <p id="pickerStatus" class="hint" role="status"></p>
+              <button id="useFolder" type="button" data-copy="useFolder" disabled>Use this folder</button>
+            </div>
+          </details>
+          <details id="writing">
+            <summary data-copy="optional">Item notes and chat excerpts</summary>
+            <label for="narrationMode" class="narration-label" data-copy="narrationLabel">Item notes</label>
+            <select id="narrationMode" aria-describedby="narrationHint">
+              <option value="off" data-copy="narrationOff">Off</option>
+              <option value="work" data-copy="narrationWork">From the work</option>
+              <option value="process" data-copy="narrationProcess">From the work and its conversation</option>
+            </select>
+            <p id="narrationHint" class="hint" data-copy="narrationInfo"></p>
+            <label class="memory"><input id="memories" type="checkbox"><span data-copy="memory">Keep request excerpts in the original records</span></label>
+          </details>
+          <button class="primary" id="enter" type="submit" disabled data-copy="enter">Open my mine</button>
+          <p id="error" role="alert" hidden></p>
+        </form>
+        <a class="try-mine" href="/try" data-copy="tryMine">Try a sample mine</a>
+        <p class="foot" data-copy="saved">Next time, open Deepmine to return here. Your mine progress is saved on this computer.</p>
+        <noscript>Enable JavaScript to choose your project. 请启用 JavaScript 选择项目。</noscript>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
