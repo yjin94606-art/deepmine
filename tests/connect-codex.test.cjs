@@ -90,6 +90,11 @@ test('scanning a selected workspace never ingests the mine’s own custom data d
   await fs.writeFile(path.join(f.project,'work.md'),'# A real project output');
   const result=await require('../scripts/output-files.cjs').collectFiles({projectPath:f.project,outputDirs:['.'],dataDirectory,timezone:'UTC'});
   assert.deepEqual(result.outputs.flatMap(r=>r.files),['work.md']);
+  const alias=path.join(f.appRoot,'workspace parent');
+  await fs.symlink(path.dirname(f.project),alias,process.platform==='win32'?'junction':'dir');
+  const aliasedProject=path.join(alias,path.basename(f.project));
+  const aliased=await require('../scripts/output-files.cjs').collectFiles({projectPath:aliasedProject,outputDirs:['.'],dataDirectory,timezone:'UTC'});
+  assert.deepEqual(aliased.outputs.flatMap(r=>r.files),['work.md']);
 });
 test('an immediate save within a filesystem clock tick is observed without recording a future output',async t=>{
   const f=await fixture(t),now=new Date('2026-06-01T15:20:23.000Z');

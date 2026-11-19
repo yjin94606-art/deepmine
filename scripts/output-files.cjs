@@ -29,12 +29,17 @@ async function collectFiles(options = {}) {
       if (++visited > 5000 || outputs.length >= 500) { limited('输出文件数量达到本次扫描上限。'); return; }
       if (entry.name.startsWith('.') || EXCLUDED.has(entry.name) || /(?:credentials?|secrets?|api[_-]?keys?|auth[_-]?tokens?)/i.test(entry.name) || entry.isSymbolicLink()) continue;
       const file = path.join(directory,entry.name);
-      if (entry.isDirectory()) { await visit(file,depth+1,selectedRoot); continue; }
+      if (entry.isDirectory()) {
+        // Windows directory listings can classify a junction as a plain directory.
+        const child = await fs.lstat(file).catch(() => null);
+        if (child?.isDirectory() && !child.isSymbolicLink()) await visit(file,depth+1,selectedRoot);
+        continue;
+      }
       const extension=path.extname(entry.name).slice(1).toLowerCase();
       if(['pem','key','p12','pfx','kdbx'].includes(extension))continue;
       const type = C.classify(entry.name); if (!entry.isFile()) continue;
       let real, stat; try { real = await fs.realpath(file); stat = await fs.lstat(file); } catch { limited('部分输出文件暂不可读。'); continue; }
-      if (!within(selectedRoot,real) || stat.isSymbolicLink() || !stat.isFile() || seen.has(real)) continue;
+      if (!within(selectedRoot,real) || (privateRoot && within(privateRoot,real)) || stat.isSymbolicLink() || !stat.isFile() || seen.has(real)) continue;
       seen.add(real); const date = C.today(stat.mtime,options.timezone);
       // NTFS and the process clock can disagree by one Windows clock tick
       // immediately after a save. The record cannot be later than observation.
@@ -66,7 +71,7 @@ async function collectFiles(options = {}) {
       if(Date.now()-stat.ctimeMs>2000) fingerprintCache.set(real,{signature,fingerprint,description});
       else fingerprintCache.delete(real);
       if(fingerprintCache.size>2000)fingerprintCache.delete(fingerprintCache.keys().next().value);
-      const relative = path.relative(projectPath,file).split(path.sep).join('/');
+      const relative = path.relative(realProject,file).split(path.sep).join('/');
       const id = 'file:'+crypto.createHash('sha256').update(projectId+'\0'+relative+'\0'+fingerprint).digest('hex');
       outputs.push({id,projectId,sourceId:'local-files',timestamp:observedTime,type,title:description?.title||entry.name.slice(0,160),files:[relative],summary:description?.summary||LEGACY_FILE_NOTE,byteLength:stat.size,...(description?{contentVersion:1}:{}),fingerprint});
     }
@@ -74,7 +79,7 @@ async function collectFiles(options = {}) {
   for (const directory of outputDirs) {
     const candidate = path.resolve(projectPath,directory);
     if (!within(projectPath,candidate) || path.relative(projectPath,candidate).split(path.sep).some(part=>part.startsWith('.')&&part!=='')) { limited('输出目录须位于所选项目内且不能是隐藏目录。'); continue; }
-    try { const stat=await fs.lstat(candidate), real=await fs.realpath(candidate); if (!stat.isDirectory()||stat.isSymbolicLink()||!within(realProject,real)) { limited('跳过符号链接或项目外输出目录。'); continue; } validRoots++; await visit(candidate,0,real); }
+    try { const stat=await fs.lstat(candidate), real=await fs.realpath(candidate); if (!stat.isDirectory()||stat.isSymbolicLink()||!within(realProject,real)) { limited('跳过符号链接或项目外输出目录。'); continue; } validRoots++; await visit(real,0,real); }
     catch { limited('配置的输出目录不存在或不可读。'); }
   }
   notes.add('扫描所选目录的文件、修改时间与内容指纹。作品介绍来自这个版本能读到的正文、功能、表头或媒体信息。');

@@ -559,7 +559,7 @@ function createProcessReader({projectPath,scopePath,codexRoot,claudeRoot,process
       const [repository,ref,name,sha]=JSON.parse(key);
       if(repository===project)knownImages.set(ref,{name:canonical(paths.resolve(project,name)),path:name,sha});
     }
-    let current,answer=[];
+    let current,realProject,answer=[];
     function ancestor(node,descendant){
       for(let count=0;node&&descendant&&count<4096;count++){
         if(node===descendant)return true;
@@ -597,8 +597,12 @@ function createProcessReader({projectPath,scopePath,codexRoot,claudeRoot,process
           // bytes as the earlier receipt; never follow a link outside it.
           if(matches.length===1&&inScope(full,project)){
             try{
-              const real=fs.realpathSync(named),stat=fs.statSync(real);
-              if(inScope(real,project)&&stat.isFile()&&stat.size<=16*mb&&hash(fs.readFileSync(real))===matches[0].sha)parent=matches[0];
+              realProject??=fs.realpathSync(projectPath);
+              const real=fs.realpathSync(named);
+              if(inScope(real,realProject)){
+                const stat=fs.statSync(real);
+                if(stat.isFile()&&stat.size<=16*mb&&hash(fs.readFileSync(real))===matches[0].sha)parent=matches[0];
+              }
             }catch{/* Missing historical input. */}
           }
         }

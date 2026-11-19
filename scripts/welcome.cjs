@@ -126,7 +126,9 @@ async function childFolders(folder,signal) {
     signal.throwIfAborted();
     if (++inspected > 4096 || children.length >= 200) { truncated = true; break; }
     if (entry.isDirectory() && !entry.isSymbolicLink() && !entry.name.startsWith('.') && !/[\x00-\x1f\x7f]/.test(entry.name)) {
-      children.push({name:entry.name, path:path.join(current,entry.name)});
+      const child = path.join(current,entry.name);
+      const stat = await fs.lstat(child).catch(() => null);
+      if (stat?.isDirectory() && !stat.isSymbolicLink()) children.push({name:entry.name, path:child});
     }
   }
   children.sort((a,b)=>a.name.localeCompare(b.name));

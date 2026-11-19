@@ -214,12 +214,12 @@ function nativeRender(id,bytes,brief,options='',shown=bytes){
       output:[{type:'input_image',image_url:'data:image/png;base64,'+shown.toString('base64')}]}}
   ];
 }
-async function comparedImages(t,{extra=[],options=',num_last_images_to_include:1',firstDisplay=png,changed=false,withRequest=true}={}){
-  const c=await setup(t),other=Buffer.concat([png,Buffer.from('\x01')]);
-  const first=output('first','first.png',png,'image'),second=output('revised','latest.png',other,'image');
+async function comparedImages(t,{extra=[],options=',num_last_images_to_include:1',firstDisplay=png,changed=false,withRequest=true,firstName='first.png'}={},fixture){
+  const c=fixture || await setup(t),other=Buffer.concat([png,Buffer.from('\x01')]);
+  const first=output('first',firstName,png,'image'),second=output('revised','latest.png',other,'image');
   c.outputs=[first,second];c.memoriesEnabled=false;
   await fs.mkdir(c.projectPath,{recursive:true});
-  await fs.writeFile(path.join(c.projectPath,'first.png'),changed?other:png);
+  await fs.writeFile(path.join(c.projectPath,firstName),changed?other:png);
   await codex(c,[turn('one'),message('画一座云上的邮局。'),...nativeRender('one',png,'A mountain of letters above the clouds.','',firstDisplay),
     ...extra,turn('two'),...(withRequest?[message('只留下几封信，再给猫留扇门。')]:[]),
     ...nativeRender('two',other,'Edit the post office to have a cat flap and just a few letters.',options)]);
@@ -259,6 +259,21 @@ test('an explicit project image reference requires the earlier receipt and uncha
   const options=',referenced_image_paths:["first.png"]';
   assert.equal((await comparedImages(t,{options})).length,2);
   assert.equal((await comparedImages(t,{options,changed:true})).length,1);
+});
+test('project aliases preserve image edit history and links outside the project cannot supply a reference',async t=>{
+  const c=await setup(t),root=path.dirname(c.projectPath);
+  const projectTarget=path.join(root,'project-target'),outside=path.join(root,'outside');
+  await fs.mkdir(projectTarget);await fs.mkdir(outside);
+  const linkType=process.platform==='win32'?'junction':'dir';
+  await fs.symlink(projectTarget,c.projectPath,linkType);
+  const local=await comparedImages(t,{options:',referenced_image_paths:["first.png"]'},c);
+  assert.equal(local.length,2);
+  assert.deepEqual(local.referenceImage,{path:'first.png',fingerprint:hash(png)});
+  await fs.symlink(outside,path.join(c.projectPath,'external'),linkType);
+  const firstName='external/first.png';
+  const external=await comparedImages(t,{options:',referenced_image_paths:["external/first.png"]',firstName},c);
+  assert.equal(external.length,1);
+  assert.equal(external.referenceImage,undefined);
 });
 test('identical cached renders refuse an ambiguous copy, explicit matching path resolves only its own output',async t=>{
   const c=await setup(t);c.outputs=[output('a','exports/a.png',png,'image'),output('b','exports/b.png',png,'image')];

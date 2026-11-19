@@ -101,6 +101,12 @@ function createService(options = {}) {
   function keyFor(input) { return crypto.createHash('sha256').update(JSON.stringify([input.projectId, input.date, input.fingerprint])).digest('hex'); }
   function response(status, input, extra = {}) { return { status, items: [], ...(input ? { projectId: input.projectId, date: input.date, fingerprint: input.fingerprint } : {}), ...extra }; }
   function errorResponse(input, record) { return response(record.code === 'cli_missing' || record.code === 'input_limit' || record.code === 'cache_unavailable' ? 'unavailable' : 'error', input, { message: MESSAGES[record.code] || MESSAGES.cli_failed, reason: record.code, retryAfter: new Date(record.until).toISOString() }); }
+  function currentResult(input, key) {
+    if (memory.has(key)) return response('ready', input, { items: [clone(memory.get(key))] });
+    const failed = failures.get(key);
+    if (failed && failed.until > timestamp()) return errorResponse(input, failed);
+    return null;
+  }
   async function safeDirectory(directory, create) {
     let stat;
     try { stat = await fs.lstat(directory); }
@@ -175,11 +181,11 @@ function createService(options = {}) {
       await fs.writeFile(writeFile, JSON.stringify(envelope), { flag: 'wx', mode: 0o600 });
       if (job.cancelled || closed) throw failure('cancelled');
       await fs.rename(writeFile, path.join(cacheRoot, key + '.json'));
-      job.published = true;
       remember(memory, key, envelope); failures.delete(key);
     } catch (error) {
       if (!closed && !job.cancelled) remember(failures, key, { code: MESSAGES[error.code] ? error.code : 'cache_unavailable', until: timestamp() + cooldown });
     } finally {
+      job.finished = true;
       // Only known files from this invocation are removed. Never recursively
       // delete a computed workspace or any directory the model might populate.
       await Promise.allSettled([schemaFile, resultFile, writeFile].map(file => fs.unlink(file)));
@@ -192,9 +198,8 @@ function createService(options = {}) {
     try { input = D.buildInput(snapshot, date); } catch { return response('unavailable', null, { message: MESSAGES.invalid_input, reason: 'invalid_input' }); }
     if (!input) return response('unavailable', null, { message: MESSAGES.no_evidence, reason: 'no_evidence' });
     const key = keyFor(input);
-    if (memory.has(key)) return response('ready', input, { items: [clone(memory.get(key))] });
-    const failed = failures.get(key);
-    if (failed && failed.until > timestamp()) return errorResponse(input, failed);
+    const existing = currentResult(input, key);
+    if (existing) return existing;
     try {
       const cached = await readCache(input, key);
       if (closed) return response('unavailable', input, { message: MESSAGES.closed, reason: 'closed' });
@@ -202,10 +207,11 @@ function createService(options = {}) {
     } catch (error) {
       const record = { code: 'cache_unavailable', until: timestamp() + cooldown }; remember(failures, key, record); return errorResponse(input, record);
     }
-    // A ready result is already visible while its unique scratch files are
-    // being removed. A subsequent revision can start after that cleanup.
-    if (active?.published) await active.promise;
+    // Another request can finish generation while this poll reads the disk.
+    if (active?.finished) await active.promise;
     if (closed) return response('unavailable', input, { message: MESSAGES.closed, reason: 'closed' });
+    const latest = currentResult(input, key);
+    if (latest) return latest;
     if (active) return response(active.key === key ? 'pending' : 'busy', input, { message: active.key === key ? 'AI 正在根据当天提交生成藏品。' : 'AI 正在处理另一天，请稍后刷新当前日期。' });
     try { prompt = buildPrompt(input); }
     catch (error) { const record = { code: error.code || 'input_limit', until: timestamp() + cooldown }; remember(failures, key, record); return errorResponse(input, record); }

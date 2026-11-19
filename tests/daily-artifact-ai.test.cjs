@@ -131,7 +131,26 @@ test('foreign or malformed model results fail validation and remain visibly non-
 });
 
 test('failed generation is cooled down across repeated polling and may retry after expiry', async t => {
-  const f = await fixture(t, { cooldownMs: 1000 }); await f.service.get(snapshot(), DATE); (await f.job()).fail(1);
+  const f = await fixture(t, { cooldownMs: 1000 }); await f.service.get(snapshot(), DATE);
+  const job = await f.job();
+  // Pause a poll after it has checked memory but before the disk cache responds.
+  const lstat = fs.lstat;
+  let reading = false, resume;
+  const gate = new Promise(resolve => { resume = resolve; });
+  t.mock.method(fs, 'lstat', async (file, ...args) => {
+    if (!reading && path.dirname(file) === path.dirname(job.output) && /^[a-f0-9]{64}\.json$/.test(path.basename(file))) {
+      reading = true;
+      await gate;
+    }
+    return lstat(file, ...args);
+  });
+  const polling = f.service.get(snapshot(), DATE);
+  try {
+    await until(() => reading, 'concurrent cache read');
+    job.fail(1);
+    await f.status(snapshot(), DATE, 'error');
+  } finally { resume(); }
+  assert.equal((await polling).status, 'error');
   const first = await f.status(snapshot(), DATE, 'error'); assert.equal(first.reason, 'cli_failed');
   for (let i = 0; i < 10; i++) assert.equal((await f.service.get(snapshot(), DATE)).status, 'error');
   assert.equal(f.fake.jobs.length, 1); f.moveClock(1001); assert.equal((await f.service.get(snapshot(), DATE)).status, 'pending'); await f.job(1); assert.equal(f.fake.jobs.length, 2);

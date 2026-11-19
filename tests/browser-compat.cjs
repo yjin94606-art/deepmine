@@ -38,7 +38,8 @@ async function verifyBrowser(engine){
   const playwright=require('playwright');
   const browserType=engine==='edge'?playwright.chromium:playwright[engine];
   assert.ok(browserType && ['chromium','edge','firefox','webkit'].includes(engine),'Unknown browser');
-  const scratch=await fs.mkdtemp(path.join(os.tmpdir(),'deepmine-browser-'));
+  const tempRoot=await fs.realpath(os.tmpdir());
+  const scratch=await fs.mkdtemp(path.join(tempRoot,'deepmine-browser-'));
   let instance,browser;
   try{
     const project=path.join(scratch,'海岸 Studio');
