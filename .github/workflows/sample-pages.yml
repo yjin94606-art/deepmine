@@ -5,6 +5,7 @@ on:
     paths:
       - 'dist/**'
       - 'docs/launch/social-en.png'
+      - 'docs/launch/watch/**'
       - 'scripts/build-sample.cjs'
       - 'tests/sample-pages.browser.cjs'
       - '.github/workflows/sample-pages.yml'

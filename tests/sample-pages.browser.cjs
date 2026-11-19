@@ -8,10 +8,10 @@ const {chromium}=require('playwright');
 async function verifySample(directory,channel){
   const base='/deepmine/';
   const releases='https://github.com/yjin94606-art/deepmine/releases/latest';
-  const mime={'.js':'application/javascript','.mjs':'application/javascript','.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.png':'image/png'};
+  const mime={'.js':'application/javascript','.mjs':'application/javascript','.html':'text/html','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.mp4':'video/mp4','.vtt':'text/vtt'};
   const files=new Set();
   for(const entry of await fs.readdir(directory,{withFileTypes:true,recursive:true})){
-    if(entry.isDirectory()){assert.equal(entry.name,'demo-assets');continue;}
+    if(entry.isDirectory()){assert.ok(['demo-assets','watch'].includes(entry.name));continue;}
     assert.ok(entry.isFile());
     const file=path.relative(directory,path.join(entry.parentPath||entry.path,entry.name)).split(path.sep).join('/');
     assert.ok(mime[path.extname(file)],'Unexpected hosted file '+file);
@@ -26,7 +26,8 @@ async function verifySample(directory,channel){
   const missing=[],errors=[],requested=[];
   const server=http.createServer(async(req,res)=>{
     const route=new URL(req.url,'http://localhost').pathname;
-    const file=route===base?'index.html':route.startsWith(base)?route.slice(base.length):'';
+    const relative=route.startsWith(base)?route.slice(base.length):null;
+    const file=relative===null?'':relative===''||relative.endsWith('/')?relative+'index.html':relative;
     if(!files.has(file)){missing.push(route);res.writeHead(404);res.end();return;}
     res.writeHead(200,{'Content-Type':mime[path.extname(file)]});res.end(await fs.readFile(path.join(directory,file)));
   });
@@ -80,8 +81,19 @@ async function verifySample(directory,channel){
     assert.ok(downloadClick);
     assert.ok(requested.every(url=>url===releases||url.startsWith(site)||url.startsWith('blob:')));
     assert.ok(!requested.some(url=>url.includes('social-en.png')),'Playing must not preload the social preview.');
+    assert.ok(!requested.some(url=>url.startsWith(site+'watch/')),'Playing must not preload the film.');
+    await page.goto(site+'watch/');
+    const film=page.locator('video');
+    assert.equal(await film.getAttribute('preload'),'none');
+    assert.equal(await film.locator('track[srclang="en"]').getAttribute('src'),'captions.vtt');
+    assert.equal(await page.locator('meta[property="og:image"]').getAttribute('content'),new URL('watch/share.jpg',hosted).href);
+    const captions=await page.request.get(site+'watch/captions.vtt');
+    assert.match(await captions.text(),/^WEBVTT[\s\S]*00:00:18\.000/);
+    assert.deepEqual(await page.evaluate(()=>window.samplePolicyErrors),[]);
+    await page.getByRole('link',{name:'Play the sample mine'}).click();
+    await page.locator('#discoveryStage[open]').waitFor();
     assert.deepEqual(missing,[]);
-    console.log(files.size+' static files. Verified the 1280 × 640 share card and no cover preload. The nested sample revealed its portrait, resumed digging and opened Releases with zero API requests.');
+    console.log(files.size+' static files. Verified the playable sample, its share card, the captioned watch page and zero film requests from the game.');
   }finally{
     await browser?.close();
     await new Promise(resolve=>{server.close(resolve);server.closeAllConnections();});

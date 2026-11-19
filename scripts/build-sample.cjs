@@ -21,7 +21,7 @@ function shareMetadata(siteUrl){
   }).join('\n');
 }
 
-// Only the shell, its fictional illustrations and the social preview are published.
+// Publish the fictional sample and its self-contained, optional film.
 async function buildSample(destination,siteUrl='https://yjin94606-art.github.io/deepmine/'){
   const source=path.resolve(__dirname,'../dist');
   const meta=shareMetadata(siteUrl);
@@ -45,6 +45,16 @@ async function buildSample(destination,siteUrl='https://yjin94606-art.github.io/
     .replace('<meta charset="utf-8">','<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta name="referrer" content="no-referrer">\n'+meta);
   if(!shell.includes('data-hosted-sample') || !shell.includes(policy))throw Error('Game shell markers changed.');
   await fs.writeFile(path.join(destination,'index.html'),shell,{flag:'wx'});
+  const watchSource=path.resolve(__dirname,'../docs/launch/watch');
+  const watchOutput=path.join(destination,'watch');
+  await fs.mkdir(watchOutput);
+  for(const file of ['deepmine.mp4','poster.jpg','share.jpg','captions.vtt']){
+    await fs.copyFile(path.join(watchSource,file),path.join(watchOutput,file));
+  }
+  const baseUrl=siteUrl.endsWith('/')?siteUrl:siteUrl+'/';
+  const watchUrl=new URL('watch/',baseUrl).href.replaceAll('&','&amp;').replaceAll('"','&quot;');
+  const watchHtml=await fs.readFile(path.join(watchSource,'index.html'),'utf8');
+  await fs.writeFile(path.join(watchOutput,'index.html'),watchHtml.replaceAll('{{watchUrl}}',watchUrl),{flag:'wx'});
 }
 module.exports={buildSample};
 if(require.main===module){
