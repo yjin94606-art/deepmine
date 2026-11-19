@@ -18,7 +18,7 @@ body:
     id: environment
     attributes:
       label: Version, operating system and browser
-      placeholder: e.g. v1.0.0, Windows 11, Firefox
+      placeholder: e.g. v1.0.1, Windows 11, Firefox
   - type: textarea
     id: diagnostics
     attributes:

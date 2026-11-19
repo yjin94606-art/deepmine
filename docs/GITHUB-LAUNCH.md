@@ -6,8 +6,8 @@ The GitHub landing page, release body and press materials are in English. The tw
 
 | File | Contents |
 | --- | --- |
-| `deepmine-v1.0.0-windows-x64.zip` | Windows x64 launcher, game and bundled Node.js runtime |
-| `deepmine-v1.0.0-source.zip` | Source, launchers, offline model and license notices. Requires Node.js 20 or newer. |
+| `deepmine-v1.0.1-windows-x64.zip` | Windows x64 launcher, game and bundled Node.js runtime |
+| `deepmine-v1.0.1-source.zip` | Source, launchers, offline model and license notices. Requires Node.js 20 or newer. |
 | `SHA256SUMS.txt` | SHA-256 digest for each of the two game downloads |
 
 The [quick start](QUICKSTART.md) covers installation, the first dig, project selection and upgrading an existing mine.
@@ -19,18 +19,18 @@ Use Node.js 20 or newer and Python 3 for the release scripts. Run these commands
 ```sh
 npm run check
 npm test
-python scripts/release.py --output ../release-v1.0.0 --verify
+python scripts/release.py --output ../release-v1.0.1 --verify
 ```
 
 Build and test the portable launcher on Windows x64. The bundler verifies the official runtime digest. Use its `--node-archive` option to supply a previously downloaded archive.
 
 ```sh
-python scripts/windows_bundle.py --source ../release-v1.0.0/deepmine-v1.0.0-source.zip --output ../release-v1.0.0 --verify
-python scripts/release.py --output ../release-v1.0.0 --checksums
+python scripts/windows_bundle.py --source ../release-v1.0.1/deepmine-v1.0.1-source.zip --output ../release-v1.0.1 --verify
+python scripts/release.py --output ../release-v1.0.1 --checksums
 ```
 
 The verification scripts launch the extracted downloads and check that saved progress survives a move to another installation directory. To check a downloaded ZIP yourself, use `Get-FileHash -Algorithm SHA256` on Windows, `shasum -a 256` on macOS or `sha256sum` on Linux. Compare the result with the entry for that filename in `SHA256SUMS.txt`.
 
 ## Stage the GitHub release
 
-After the maintainer approves publication, mark the verified source commit with the tag matching `package.json`, such as `v1.0.0`. Pushing the tag triggers the release workflow. It runs checks, builds the two archives and attaches them and the checksum file to a draft. Open the draft, review the English body and its attachments, then publish when ready. [Workflow](../.github/workflows/verify.yml)
+After the maintainer approves publication, mark the verified source commit with the tag matching `package.json`, such as `v1.0.1`. Pushing the tag triggers the release workflow. It runs checks, builds the two archives and attaches them and the checksum file to a draft. Open the draft, review the English body and its attachments, then publish when ready. [Workflow](../.github/workflows/verify.yml)

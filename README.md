@@ -10,13 +10,13 @@
 
 ## Download and play
 
-Choose the ZIP for your system under **Assets**. Both downloads include the playable sample mine. [Get the V1 release](https://github.com/yjin94606-art/deepmine/releases/tag/v1.0.0)
+Choose the ZIP for your system under **Assets**. Both downloads include the playable sample mine. [Get the V1 release](https://github.com/yjin94606-art/deepmine/releases/tag/v1.0.1)
 
 | System | Download | After extracting the ZIP |
 | --- | --- | --- |
-| Windows x64 | `deepmine-v1.0.0-windows-x64.zip` | Double-click **Open Deepmine.cmd**. The runtime is included. |
-| macOS | `deepmine-v1.0.0-source.zip` | With Node.js 20 or newer installed, double-click **Open Deepmine.command**. |
-| Linux | `deepmine-v1.0.0-source.zip` | With Node.js 20 or newer installed, run `sh open-deepmine.sh` in the extracted folder. |
+| Windows x64 | `deepmine-v1.0.1-windows-x64.zip` | Double-click **Open Deepmine.cmd**. The runtime is included. |
+| macOS | `deepmine-v1.0.1-source.zip` | With Node.js 20 or newer installed, double-click **Open Deepmine.command**. |
+| Linux | `deepmine-v1.0.1-source.zip` | With Node.js 20 or newer installed, run `sh open-deepmine.sh` in the extracted folder. |
 
 Choose **Try a sample mine** on the welcome screen. You can reach the first find without an account or API key. **Choose my project** takes you back to the welcome screen, where you can select a recent Codex or Claude Code project or browse to a folder where you keep your work. Leave the launcher window open while you play. [First launch, saves and upgrades](docs/QUICKSTART.md)
 

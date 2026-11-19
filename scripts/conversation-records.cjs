@@ -39,6 +39,7 @@ async function collectConversations({codexRoot,claudeRoot,scopePath,projectId,en
   for(const file of candidates){
     if(bytes>128*1024*1024){partial=true;notes.add('对话记录达到本次扫描预算，稍后的记录可能未覆盖。');break;}
     const input=fs.createReadStream(file.filename,{encoding:'utf8'}),lines=readline.createInterface({input,crlfDelay:Infinity});
+    const closed=new Promise(resolve=>input.once('close',resolve));
     let matched=false,sessionId=null,worker=/(?:^|[\\/])subagents[\\/]/.test(file.filename);
     try{
       for await(const line of lines){
@@ -78,7 +79,11 @@ async function collectConversations({codexRoot,claudeRoot,scopePath,projectId,en
         const existing=memories.get(id);if(existing&&Date.parse(existing.timestamp)<=Date.parse(row.timestamp))continue;
         memories.set(id,{id,projectId,sourceId:file.source,timestamp:new Date(row.timestamp).toISOString(),sourceRef,title:summary.replace(/\[\[DEEPMINE_MEMORY\]\]/g,'').split(/[\n。.!！?？]/)[0].trim().slice(0,100)||'Conversation note',summary:summary.replace(/\[\[DEEPMINE_MEMORY\]\]/g,'').trim(),method:'conversation-excerpt',objectType:'memory'});
       }
-    }catch{partial=true;notes.add('写入中的会话将在下一轮重新读取。');}finally{lines.close();input.destroy();}
+    }catch{partial=true;notes.add('写入中的会话将在下一轮重新读取。');}finally{
+      lines.close();
+      input.destroy();
+      await closed;
+    }
   }
   users.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
   // Bounded per day: these are quoted memories, never a fabricated completion.

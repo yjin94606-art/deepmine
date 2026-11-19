@@ -10,6 +10,8 @@
 
 ## 下载与试玩
 
+打开发布页，在 **Assets** 中选择对应系统的 ZIP，两种下载都带有试玩矿坑。[下载深矿 v1.0.1](https://github.com/yjin94606-art/deepmine/releases/tag/v1.0.1)
+
 | 电脑 | 在 GitHub Releases 的 Assets 中选择 | 解压后启动 |
 | --- | --- | --- |
 | Windows x64 | 文件名以 `-windows-x64.zip` 结尾，内置运行环境 | 双击最外层的 **Open Deepmine.cmd** |

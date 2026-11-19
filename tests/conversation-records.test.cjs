@@ -2,9 +2,32 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const {collectConversations}=require('../scripts/conversation-records.cjs');
 const NOW=new Date('2026-11-18T04:00:00Z'),text='我们决定采用四层矿井结构，并保留真实记录的来源标记；这段讨论作为后续设计的参考记忆。';
-function fixture(t){const root=fs.mkdtempSync(path.join(os.tmpdir(),'deepmine-conversations-'));t.after(()=>{if(!path.resolve(root).startsWith(path.resolve(os.tmpdir())+path.sep)||!path.basename(root).startsWith('deepmine-conversations-'))throw new Error('Unsafe cleanup');fs.rmSync(root,{recursive:true,force:true});});const scopePath=path.join(root,'project');return{root,scopePath,codexRoot:path.join(root,'codex'),claudeRoot:path.join(root,'claude'),projectId:'conversation-fixture',enabled:true,now:NOW};}
+function fixture(t){
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'deepmine-conversations-'));
+  t.after(async()=>{
+    if(path.dirname(path.resolve(root))!==path.resolve(os.tmpdir())||!path.basename(root).startsWith('deepmine-conversations-'))throw new Error('Unsafe cleanup');
+    await fs.promises.rm(root,{recursive:true,force:true,maxRetries:3,retryDelay:40});
+  });
+  const scopePath=path.join(root,'project');
+  return{root,scopePath,codexRoot:path.join(root,'codex'),claudeRoot:path.join(root,'claude'),projectId:'conversation-fixture',enabled:true,now:NOW};
+}
 function log(file,rows){fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,rows.map(row=>JSON.stringify(row)).join('\n')+'\n');}
 function meta(config,id='main',source='cli'){return{type:'session_meta',timestamp:'2026-11-18T01:00:00Z',payload:{id,cwd:config.scopePath,source}};}
+test('collection closes each log handle before resolving, including out-of-scope sessions',async t=>{
+  const config=fixture(t),createReadStream=fs.createReadStream;
+  const directory=path.join(config.codexRoot,'sessions');
+  log(path.join(directory,'inside.jsonl'),[meta(config)]);
+  log(path.join(directory,'outside.jsonl'),[meta({...config,scopePath:config.scopePath+'-other'})]);
+  const closed=[];
+  t.mock.method(fs,'createReadStream',(filename,options)=>{
+    const stream=createReadStream(filename,{...options,fs:{open:fs.open,read:fs.read,
+      close(fd,callback){setImmediate(()=>fs.close(fd,callback));}}});
+    stream.once('close',()=>closed.push(path.basename(filename)));
+    return stream;
+  });
+  await collectConversations(config);
+  assert.deepEqual([...closed].sort(),['inside.jsonl','outside.jsonl']);
+});
 test('switched workspace conversation turns do not donate quotes or language preferences',async t=>{
   const config=fixture(t),ctx=cwd=>({type:'turn_context',payload:{cwd}});
   log(path.join(config.codexRoot,'sessions','moved.jsonl'),[meta(config),ctx(config.scopePath+'-sibling'),

@@ -350,7 +350,7 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--verify", action="store_true", help="Extract the ZIP and exercise two fresh Codex profiles")
     mode.add_argument("--checksums", action="store_true", help="Verify the source/Windows pair and write SHA256SUMS.txt")
-    parser.add_argument("--tag", help="Require this exact Git tag to match package.json, e.g. v1.0.0")
+    parser.add_argument("--tag", help=f"Require this exact Git tag to match package.json, e.g. v{VERSION}")
     args = parser.parse_args()
     if args.tag is not None:
         require(args.tag == "v" + VERSION, "Tag must match the package version v" + VERSION)
