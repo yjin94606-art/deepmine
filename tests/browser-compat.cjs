@@ -67,9 +67,16 @@ async function verifyRecordings(browser,scratch){
       await list.getByRole('button',{name:new RegExp(name)}).click();
       const detail=page.locator('#detailDialog[open]');
       assert.equal(await detail.locator('#detailTitle').innerText(),name);
+      const requestedPath='private-folder-name/'+name+'.wav';
       await detail.locator('#detailPlayer button').click();
-      const playback=await detail.locator('audio').getAttribute('src');
-      assert.equal(new URL(playback,page.url()).searchParams.get('path'),'private-folder-name/'+name+'.wav');
+      await page.waitForFunction(()=>document.querySelector('#detailPlayer audio')?.readyState>=1 ||
+        document.querySelector('#detailPlayer [role="status"]'));
+      const playback=await detail.locator('#detailPlayer').evaluate(holder=>{
+        const audio=holder.querySelector('audio');
+        return {src:audio?.currentSrc,duration:audio?.duration,message:holder.textContent};
+      });
+      assert.ok(Number.isFinite(playback.duration)&&playback.duration>0,'Native WAV metadata unavailable: '+playback.message);
+      assert.equal(new URL(playback.src).searchParams.get('path'),requestedPath);
       await detail.locator('[data-close="detailDialog"]').click();
     }
     await list.getByRole('button',{name:new RegExp(second)}).click();

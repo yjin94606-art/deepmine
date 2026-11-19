@@ -189,14 +189,35 @@ test('private filenames get no introduction even if their names were present in 
 
 test('a playable video preview must specify an observed version and honors its actual MIME type',async t=>{
   const file='exports/001.webm', bytes=Buffer.from('1a45dfa39f4286810142f7810142f2810442f381084282847765626d4287810442858102','hex');
-  const {get,project}=await fixture(t,p=>{fs.mkdirSync(path.join(p,'exports'));fs.writeFileSync(path.join(p,file),bytes);},['exports']);
+  const {get,project,commit}=await fixture(t,p=>{
+    fs.mkdirSync(path.join(p,'exports'));fs.writeFileSync(path.join(p,file),bytes);
+    const git=gitAt(p);git('init','--quiet');git('add','exports');git('commit','-qm','Add video');
+    return {commit:git('rev-parse','HEAD')};
+  },['exports']);
   assert.equal((await get(url('preview',file))).status,400);
   const route=url('preview',file,{fingerprint:sha(bytes)});
   const response=await get(route);assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'video/webm');
   assert.deepEqual(Buffer.from(await response.arrayBuffer()),bytes);
-  const head=await get(route,{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
+  for(const version of [route,url('preview',file,{commit})]){
+    const head=await get(version,{method:'HEAD',headers:{Range:'bytes=0-1'}});
+    assert.equal(head.status,200);assert.equal(await head.text(),'');
+    assert.equal(Number(head.headers.get('content-length')),bytes.length);
+    assert.equal(head.headers.get('accept-ranges'),'bytes');
+    for(const [range,first,last] of [['bytes=0-1',0,1],['bytes=3-',3,bytes.length-1],['bytes=-4',bytes.length-4,bytes.length-1],['bytes=6-999',6,bytes.length-1]]){
+      const partial=await get(version,{headers:{Range:range}});assert.equal(partial.status,206);
+      assert.equal(partial.headers.get('content-range'),`bytes ${first}-${last}/${bytes.length}`);
+      assert.equal(Number(partial.headers.get('content-length')),last-first+1);
+      assert.deepEqual(Buffer.from(await partial.arrayBuffer()),bytes.subarray(first,last+1));
+    }
+    const unsatisfied=await get(version,{headers:{Range:'bytes='+bytes.length+'-'}});
+    assert.equal(unsatisfied.status,416);assert.equal(unsatisfied.headers.get('content-range'),'bytes */'+bytes.length);
+    assert.equal(await unsatisfied.text(),'');
+    const multiple=await get(version,{headers:{Range:'bytes=0-1,3-4'}});
+    assert.equal(multiple.status,200);assert.deepEqual(Buffer.from(await multiple.arrayBuffer()),bytes);
+  }
   fs.writeFileSync(path.join(project,file),Buffer.alloc(bytes.length,0));
   assert.equal((await get(route)).status,409);
+  assert.equal((await get(route,{headers:{Range:'bytes=0-1'}})).status,409);
 });
 
 test('numbered files scanned from a project explain the code function and CSV columns on their snapshot and service entries',async t=>{

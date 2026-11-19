@@ -18,6 +18,11 @@ async function verifySample(directory,channel){
     assert.ok(!/^(welcome|vision|config|\.deepmine)/.test(file),'Unexpected local-only asset '+file);
     files.add(file);
   }
+  const cover=await fs.readFile(path.join(directory,'social-en.png'));
+  assert.deepEqual(cover,await fs.readFile(path.resolve(__dirname,'../docs/launch/social-en.png')));
+  assert.deepEqual([cover.readUInt32BE(16),cover.readUInt32BE(20)],[1280,640]);
+  const hosted=new URL(process.env.DEEPMINE_PAGES_URL||'https://yjin94606-art.github.io/deepmine/');
+  if(!hosted.pathname.endsWith('/'))hosted.pathname+='/';
   const missing=[],errors=[],requested=[];
   const server=http.createServer(async(req,res)=>{
     const route=new URL(req.url,'http://localhost').pathname;
@@ -39,6 +44,18 @@ async function verifySample(directory,channel){
       document.addEventListener('securitypolicyviolation',event=>window.samplePolicyErrors.push(event.effectiveDirective+' '+event.blockedURI));
     });
     await page.goto(site);
+    const tags=await page.locator('head meta[property], head meta[name]').evaluateAll(nodes=>
+      Object.fromEntries(nodes.map(node=>[node.getAttribute('property')||node.name,node.content])));
+    assert.equal(tags['og:url'],hosted.href);
+    assert.equal(tags['og:type'],'website');
+    assert.equal(tags['twitter:card'],'summary_large_image');
+    assert.match(tags['og:title'],/Play Deepmine/);
+    assert.match(tags['og:description'],/botanist/);
+    assert.equal(tags['og:image'],new URL('social-en.png',hosted).href);
+    assert.equal(tags['og:image:type'],'image/png');
+    assert.equal(tags['og:image:width'],'1280');assert.equal(tags['og:image:height'],'640');
+    assert.match(tags['og:image:alt'],/brass drill/);
+    for(const key of ['title','description','image','image:alt'])assert.equal(tags['og:'+key],tags['twitter:'+key]);
     await page.locator('#discoveryStage[open]').waitFor();
     assert.equal(await page.evaluate(()=>window.DeepmineApp.getState().mode),'demo');
     assert.match(await page.locator('#stageContent').innerText(),/hair clip/i);
@@ -62,8 +79,9 @@ async function verifySample(directory,channel){
     await page.waitForURL(releases);
     assert.ok(downloadClick);
     assert.ok(requested.every(url=>url===releases||url.startsWith(site)||url.startsWith('blob:')));
+    assert.ok(!requested.some(url=>url.includes('social-en.png')),'Playing must not preload the social preview.');
     assert.deepEqual(missing,[]);
-    console.log(files.size+' static files. The nested sample revealed its portrait, displayed its original image, resumed digging and opened Releases with zero API requests.');
+    console.log(files.size+' static files. Verified the 1280 × 640 share card and no cover preload. The nested sample revealed its portrait, resumed digging and opened Releases with zero API requests.');
   }finally{
     await browser?.close();
     await new Promise(resolve=>{server.close(resolve);server.closeAllConnections();});

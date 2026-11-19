@@ -26,6 +26,24 @@ const { createCapture } = require('./api-capture.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 
+function sendPlayable(req,res,headers,bytes,size){
+  const mediaHeaders={...headers,'Accept-Ranges':'bytes','Content-Length':size};
+  // No validators are advertised. Ignore conditional, unknown and multipart
+  // ranges and send the whole representation. HEAD describes the full GET.
+  const spec=req.method==='GET' && !req.headers['if-range'] &&
+    /^bytes=(\d*)-(\d*)$/i.exec(req.headers.range||'');
+  if(spec && (spec[1]||spec[2]) && !(spec[1]&&spec[2]&&Number(spec[1])>Number(spec[2]))){
+    const first=spec[1]?Number(spec[1]):Math.max(0,size-Number(spec[2]));
+    const last=spec[1]&&spec[2]?Math.min(size-1,Number(spec[2])):size-1;
+    if(first>last){
+      res.writeHead(416,{...mediaHeaders,'Content-Range':'bytes */'+size,'Content-Length':0});res.end();return;
+    }
+    res.writeHead(206,{...mediaHeaders,'Content-Range':`bytes ${first}-${last}/${size}`,'Content-Length':last-first+1});
+    res.end(bytes.subarray(first,last+1));return;
+  }
+  res.writeHead(200,mediaHeaders);res.end(req.method==='HEAD'?undefined:bytes);
+}
+
 async function start(options = {}) {
   const dataDirectory = path.resolve(options.dataDirectory || settingsDirectory(ROOT));
   let local = {};
@@ -256,7 +274,9 @@ async function start(options = {}) {
           const playable=videoMime[ext] || audioMime[ext], contentType=intro||imprint?'application/json; charset=utf-8':imageMime[ext] || playable;
           const limit=(intro||imprint||playable?16:8)*1024*1024;
           if (!requested || !contentType || !allowed.has(requested) || !publicPath(requested) || (intro && !planFor(requested,0)) || (imprint && !supportsImprint(requested))) { res.writeHead(404, headers); res.end(); return; }
-          async function sendVersion(bytes,origin,commit,fingerprint) {
+          async function sendVersion(bytes,origin,commit,fingerprint,size=bytes?.length) {
+            const responseHeaders={...headers,'Content-Type':contentType,'X-Deepmine-Preview':origin};
+            if(playable&&!intro&&!imprint){sendPlayable(req,res,responseHeaders,bytes,size);return;}
             let content=bytes;
             if (bytes && req.method!=='HEAD' && (intro||imprint)) {
               let description=imprint?await projectImprint(requested,bytes,{projectPath,allowed,outputs:data.outputs,commit,fingerprint}):describeBytes(requested,bytes);
@@ -266,7 +286,7 @@ async function start(options = {}) {
               }
               content=JSON.stringify(description);
             }
-            res.writeHead(200,{...headers,'Content-Type':contentType,'X-Deepmine-Preview':origin});
+            res.writeHead(200,responseHeaders);
             res.end(req.method==='HEAD'?undefined:content);
           }
           try {
@@ -285,7 +305,7 @@ async function start(options = {}) {
               const size = Number((await execFile('git',['cat-file','-s',spec],gitOptions)).stdout.trim());
               if (!Number.isSafeInteger(size) || size > limit) { res.writeHead(413,headers); res.end(); return; }
               const bytes = req.method === 'HEAD' ? undefined : (await execFile('git',['cat-file','blob',spec],{...gitOptions,encoding:'buffer',maxBuffer:limit})).stdout;
-              await sendVersion(bytes,'commit-blob',commit); return;
+              await sendVersion(bytes,'commit-blob',commit,null,size); return;
             }
             const projectReal = await fs.realpath(projectPath), target = await fs.realpath(path.join(projectPath, requested)), relative = path.relative(projectReal, target);
             if (!relative || relative.startsWith('..' + path.sep) || relative === '..' || path.isAbsolute(relative)) { res.writeHead(403, headers); res.end('Outside project'); return; }

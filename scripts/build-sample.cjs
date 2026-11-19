@@ -2,10 +2,29 @@
 const fs=require('node:fs/promises');
 const path=require('node:path');
 
-// Copy only the game shell's assets and its two fictional illustrations.
-// Saved projects, collectors and the local vision runtime live outside this bundle.
-async function buildSample(destination){
+function shareMetadata(siteUrl){
+  const site=new URL(siteUrl);
+  if(site.protocol!=='https:' || site.username || site.password || site.search || site.hash)throw Error('Expected a public HTTPS Pages base URL.');
+  if(!site.pathname.endsWith('/'))site.pathname+='/';
+  const title='Play Deepmine — Dig through a day of AI work';
+  const description='Try the pixel-art mine in your browser and dig up a portrait of a botanist whose leaf-shaped hair clip took two revisions to get right.';
+  const alt='A yellow-scarfed botanist and a brass drill in the mine beside the words “Dig through a day of AI work.”';
+  const image=new URL('social-en.png',site).href;
+  const tags={
+    description,'og:type':'website','og:title':title,'og:description':description,'og:url':site.href,
+    'og:image':image,'og:image:type':'image/png','og:image:width':'1280','og:image:height':'640','og:image:alt':alt,
+    'twitter:card':'summary_large_image','twitter:title':title,'twitter:description':description,'twitter:image':image,'twitter:image:alt':alt
+  };
+  return Object.entries(tags).map(([key,value])=>{
+    const attribute=key.startsWith('og:')?'property':'name';
+    return '<meta '+attribute+'="'+key+'" content="'+value.replaceAll('&','&amp;').replaceAll('"','&quot;')+'">';
+  }).join('\n');
+}
+
+// Only the shell, its fictional illustrations and the social preview are published.
+async function buildSample(destination,siteUrl='https://yjin94606-art.github.io/deepmine/'){
   const source=path.resolve(__dirname,'../dist');
+  const meta=shareMetadata(siteUrl);
   const html=await fs.readFile(path.join(source,'index.html'),'utf8');
   const assets=new Set(['image-decode.mjs','demo-assets/garden.png','demo-assets/sample-02.png']);
   for(const [,file] of html.matchAll(/<(?:script|link)\b[^>]*?\b(?:src|href)="([^"]+)"/g)){
@@ -20,9 +39,10 @@ async function buildSample(destination){
     await fs.mkdir(path.dirname(output),{recursive:true});
     await fs.copyFile(input,output);
   }
+  await fs.copyFile(path.resolve(__dirname,'../docs/launch/social-en.png'),path.join(destination,'social-en.png'));
   const policy="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; worker-src 'none'; base-uri 'none'; form-action 'none'";
   const shell=html.replace('<html lang="en">','<html lang="en" data-hosted-sample>')
-    .replace('<meta charset="utf-8">','<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta name="referrer" content="no-referrer">');
+    .replace('<meta charset="utf-8">','<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'+policy+'"><meta name="referrer" content="no-referrer">\n'+meta);
   if(!shell.includes('data-hosted-sample') || !shell.includes(policy))throw Error('Game shell markers changed.');
   await fs.writeFile(path.join(destination,'index.html'),shell,{flag:'wx'});
 }
@@ -30,5 +50,5 @@ module.exports={buildSample};
 if(require.main===module){
   const target=process.argv[2];
   if(!target){console.error('Usage: node scripts/build-sample.cjs OUTPUT_DIRECTORY');process.exitCode=1;}
-  else buildSample(path.resolve(target)).catch(error=>{console.error(error.message);process.exitCode=1;});
+  else buildSample(path.resolve(target),process.env.DEEPMINE_PAGES_URL).catch(error=>{console.error(error.message);process.exitCode=1;});
 }

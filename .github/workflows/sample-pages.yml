@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'dist/**'
+      - 'docs/launch/social-en.png'
       - 'scripts/build-sample.cjs'
       - 'tests/sample-pages.browser.cjs'
       - '.github/workflows/sample-pages.yml'
@@ -18,15 +19,24 @@ concurrency:
 jobs:
   sample:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: read
     container: mcr.microsoft.com/playwright:v1.58.2-noble
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: actions/configure-pages@v5
+        id: pages
       - name: Build the static sample
+        env:
+          DEEPMINE_PAGES_URL: ${{ steps.pages.outputs.base_url }}
         run: node scripts/build-sample.cjs .sample-site
       - name: Try the published game at its repository subpath
+        env:
+          DEEPMINE_PAGES_URL: ${{ steps.pages.outputs.base_url }}
         run: |
           npm install --prefix "$RUNNER_TEMP/sample-test" --no-save --no-package-lock --ignore-scripts playwright@1.58.2
           NODE_PATH="$RUNNER_TEMP/sample-test/node_modules" node tests/sample-pages.browser.cjs .sample-site
