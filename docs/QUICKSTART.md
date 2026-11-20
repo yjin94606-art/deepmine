@@ -1,6 +1,6 @@
 # Your first dig
 
-[Play the fictional sample in your browser](https://yjin94606-art.github.io/deepmine/). To dig through your own work, choose the download for your computer below.
+[Download Deepmine from GitHub](https://github.com/yjin94606-art/deepmine/releases/latest), then select a project on your computer.
 
 ## Open the game
 
@@ -12,13 +12,9 @@ Keep the launcher window open while you play. It opens the game in your browser 
 
 Windows Setup is unsigned and may show an unknown publisher. The portable ZIP is available on the same release page. GitHub also hosts SHA-256 checksums for all three downloads.
 
-## Try the sample
-
-Choose **Try a sample mine**. The first descent starts automatically and pauses when the drill finds the botanist portrait. Read the note, choose **Continue digging**, and use the date rail or scroll up the shaft to revisit an earlier layer. All of the work in the sample is fictional.
-
 ## Bring your own work
 
-Return to the project picker. Select a recent Codex or Claude Code project, or browse to the folder where you keep your files. Enter the mine, work in that project as usual, then come back and dig. The launcher reopens the same project next time. Select its name in the mine to switch projects. Returning to an earlier project restores its progress.
+Select a recent Codex or Claude Code project, or browse to the folder where you keep your files. Enter the mine and choose **Dig**. The drill stops when it uncovers a piece of work. Inspect the find and choose **Continue digging**. The launcher reopens the same project next time. Select its name in the mine to switch projects. Returning to an earlier project restores its progress.
 
 Token usage comes from the records your tools provide. A folder of drawings can provide finds even if no usage log is available. The game shows unknown usage when it has no measurement. To see what it found, open the archive chest and choose **Personal survey log**. It includes reported tokens, distinct work files and metres dug for the project day.
 
@@ -39,6 +35,6 @@ Normal digging uses local files. By default, a new install saves to `%LOCALAPPDA
 
 Close the previous launcher before upgrading. Windows Setup places each version in its own folder under `%LOCALAPPDATA%\Programs\Deepmine` and updates the Start menu shortcut. To remove an installed version, close it and delete its version folder. You can remove the Deepmine shortcut from Start. Your saves live in the separate data folder listed above. If an older installation has a `.deepmine` directory, keep it with the project or point `DEEPMINE_DATA_DIR` at it when launching the new version. If you already use a custom data directory, keep that setting.
 
-AI-written notes can send work evidence to your configured Codex account when enabled. Saved conversation excerpts are a separate option. Decoding a daily GitHub treasure map or enabling a public news source requires internet access. The sample and basic digging work offline.
+AI-written notes can send work evidence to your configured Codex account when enabled. Saved conversation excerpts are a separate option. Decoding a daily GitHub treasure map or enabling a public news source requires internet access. Basic digging works offline.
 
 For connection diagnostics, run `npm run doctor` from the source package. On Windows, the portable launcher's `"Open Deepmine.cmd" --diagnostics` option produces a summary you can review before sharing.

@@ -117,7 +117,6 @@ package.json
 scripts/DeepmineSetup.cs
 scripts/api-capture.cjs
 scripts/artifact-traces.cjs
-scripts/build-sample.cjs
 scripts/build-visual-labels.py
 scripts/collector.cjs
 scripts/connect-codex.cjs
@@ -199,7 +198,6 @@ tests/output-art.test.cjs
 tests/output-files.test.cjs
 tests/release-draft.test.cjs
 tests/release_assets_test.py
-tests/sample-pages.browser.cjs
 tests/server.test.cjs
 tests/setup.test.cjs
 tests/source-adapters.test.cjs

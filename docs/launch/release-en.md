@@ -1,12 +1,12 @@
 # Deepmine 1.1.1
 
-**[Play the browser sample](https://yjin94606-art.github.io/deepmine/)** · **[Download for Windows x64](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-windows-x64-setup.exe)** · **[macOS / Linux](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-source.zip)**
+**[Download for Windows x64](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-windows-x64-setup.exe)** · **[macOS / Linux](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-source.zip)**
 
 What did you make with all those tokens? Deepmine turns a local AI project into a pixel-art mine. The usage and work your tools record give the drill more ground to cover. When the rock breaks, you discover something you actually made.
 
 ![Deepmine gameplay showing a portrait emerging from the rock and the player inspecting an earlier day's find.](https://raw.githubusercontent.com/yjin94606-art/deepmine/v1.1.1/docs/launch/digging-loop.gif)
 
-The clip comes from the playable sample. The drill stops for a portrait of a botanist in a yellow scarf. Open her note and you'll find out why it took two revisions to get that leaf-shaped hair clip into view. Keep digging, then scroll back up. Her portrait is still there.
+The footage shows a fictional project. The drill uncovers a botanist in a yellow scarf, and her note records the two revisions it took to get the leaf-shaped hair clip into view.
 
 ## Dig into your own project
 
@@ -21,11 +21,11 @@ Pick a local Codex or Claude Code project, or browse to a folder where you keep 
 | macOS | [Source ZIP](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-source.zip) | With Node.js 20 or newer installed, extract the ZIP and open **Open Deepmine.command**. |
 | Linux | [Source ZIP](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-source.zip) | With Node.js 20 or newer installed, extract the ZIP and run `sh open-deepmine.sh`. |
 
-Choose **Try a sample mine** to play before connecting a project. The sample is fictional and needs no account or API key. Your own mine is saved on your computer. Sending material to an AI for a written note is optional.
+On first launch, select a project folder and enter the mine. Progress is saved on your computer. You can opt in to AI-written notes for discoveries.
 
 ## What changed in 1.1
 
-- Open the offline Windows installer and go straight to the project picker. The sample is within reach on a phone-sized screen.
+- Open the offline Windows installer and go straight to the project picker.
 - Switch between your projects from inside the mine. Each keeps its depth, discoveries and settings.
 - The drill waits for you at a new find, even if you open the same mine in another browser or close it overnight.
 - When several related files share a find, you can inspect the individual works in its detail view.

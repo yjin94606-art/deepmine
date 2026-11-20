@@ -3,12 +3,10 @@
   const C=window.EvidenceCore,F=window.WorkFindings,I=window.DeepmineI18n,$=id=>document.getElementById(id),esc=C.escapeHTML;
   const EPS=.001,LOCALE_KEY='deepmine.locale.v1';
   const PACE_KEY='deepmine.dig-pace.v1';
-  const hostedSample=document.documentElement.hasAttribute('data-hosted-sample');
-  const sampleVisit=hostedSample || location.pathname==='/try';
-  const projectSelection=hostedSample?'https://github.com/yjin94606-art/deepmine/releases/latest':sampleVisit?'/':'/projects';
+  const sampleVisit=location.pathname==='/try';
+  const projectSelection=sampleVisit?'/':'/projects';
   let timelineKey='',timelineSelected='';
   let override=null;try{override=I.normalize(localStorage.getItem(LOCALE_KEY));}catch(_){}
-  if(hostedSample)override=I.normalize(new URLSearchParams(location.search).get('lang'))||override;
   let locale=I.resolve({override,languages:navigator.languages||[navigator.language]}),snapshot=null,projection=null,findings=[],mode='live',scene=null;
   let mining={earnedDepth:0,excavatedDepth:0,pendingDepth:0,active:false,lastSettledDate:null,revision:0};
   let visual={depth:0,status:'idle',mode:'follow'},viewDate='',activeScope='',generation=0,refreshing=false,failed=false,starting=false,scenePaused=false;
@@ -1089,14 +1087,8 @@ updatePanelBody($('sourceBody'),`${sourcePanel()}${mode==='demo'?`<p>${esc(t('fi
   window.DeepmineApp=Object.freeze({getWorkday,getState:()=>Object.freeze({mode,locale,projectId:snapshot?.project.id,ready:Boolean(snapshot),earnedDepth:mining.earnedDepth,excavatedDepth:mining.excavatedDepth,pendingDepth:mining.pendingDepth,visualDepth:Number(visual.depth)||0,active:mining.active,findings:findings.length,viewDate,pace,presentation:stageCurrent?{kind:stageCurrent.kind,ids:stageCurrent.ids||[stageCurrent.item.id],queued:stageQueue.length}:null,newsCount:news.items.length,radio:{...mining.radio},historyStart:snapshot?.history?.startDate||projection?.days[0]?.date,historyEnd:currentDate()}),refresh,startMining,setLocale,enterDemo,enterLive});
   $('projectName').href=projectSelection;
   $('settingsProjectButton').addEventListener('click',()=>location.assign(projectSelection));
-  if(hostedSample){
-    $('settingsProjectButton').dataset.i18n='downloadDeepmine';
-    $('projectName').dataset.title='downloadDeepmine';
-    $('chooseAfterFind').href=projectSelection;
-    $('chooseAfterFind').dataset.i18n='downloadDeepmine';
-  }
   if(sampleVisit){
-    $('exitDemoButton').dataset.i18n=hostedSample?'downloadDeepmine':'chooseProject';
+    $('exitDemoButton').dataset.i18n='chooseProject';
     $('chooseAfterFind').hidden=false;
   }
   localize();installScene(true);

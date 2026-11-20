@@ -1,6 +1,6 @@
 # 深矿 · Deepmine
 
-[English](../README.md) · **[网页试玩](https://yjin94606-art.github.io/deepmine/)** · **[下载 Windows x64 安装版](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-windows-x64-setup.exe)** · [macOS / Linux](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-source.zip) · [接入自己的工具](CONNECTORS.md)
+[English](../README.md) · **[下载 Windows x64 安装版](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-windows-x64-setup.exe)** · [macOS / Linux](https://github.com/yjin94606-art/deepmine/releases/download/v1.1.1/deepmine-v1.1.1-source.zip) · [接入自己的工具](CONNECTORS.md)
 
 **今天花掉的 Token，能在地下走多远？** 深矿是一款在自己电脑上玩的像素挖掘游戏。它读取你所选项目里的 AI 用量和作品记录，算出当天可挖的深度。钻头撞开岩层时，掉出来的可能就是你今天改了三遍的那张角色立绘。
 
@@ -8,9 +8,9 @@
 
 *实机录自内置的虚构项目。那枚叶子发夹改了两次，终于完整地露在刘海外面。* [静态大图](demo-portrait.png)
 
-## 下载与试玩
+## 下载与安装
 
-Windows 用户打开安装包就能试玩，下次从开始菜单打开 **Deepmine**。所有版本都内置离线试玩矿坑。[下载深矿 v1.1.1](https://github.com/yjin94606-art/deepmine/releases/tag/v1.1.1)
+Windows 用户双击安装包，下次从开始菜单打开 **Deepmine**。[下载深矿 v1.1.1](https://github.com/yjin94606-art/deepmine/releases/tag/v1.1.1)
 
 | 电脑 | 下载 | 首次启动 |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ Windows 用户打开安装包就能试玩，下次从开始菜单打开 **Deepmi
 | macOS | 文件名以 `-source.zip` 结尾，需 Node.js 20+ | 双击 **Open Deepmine.command** |
 | Linux | 同一份源码包，需 Node.js 20+ | 运行 `sh open-deepmine.sh` |
 
-打开后，点 **先试玩一次挖掘** 就能亲手挖到动图里的角色，无需账号或密钥。准备好挖自己的作品时，选 **选择自己的项目**，从 Codex、Claude Code 最近项目中选一个，或浏览平常存作品的文件夹，点 **进入矿坑**。以后双击同一个启动文件就能回来。保留启动窗口，浏览器未自动打开时可使用窗口里显示的网址。[首次连接与升级](CONNECT-CODEX.md)
+打开后，从最近的 Codex 或 Claude Code 项目中选一个，也可以浏览平常存放作品的文件夹。点 **进入矿坑**，开始挖自己的作品。以后双击同一个启动文件就能回来。保留启动窗口，浏览器未自动打开时可使用窗口里显示的网址。[首次连接与升级](CONNECT-CODEX.md)
 
 ## 一天的作品，在岩壁上是什么样
 
